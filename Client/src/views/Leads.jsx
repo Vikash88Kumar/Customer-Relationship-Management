@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Plus, 
   Search, 
@@ -24,40 +24,80 @@ import {
   ArrowLeft,
   ArrowRight
 } from "lucide-react";
+import { 
+  getLeads, 
+  createLead, 
+  updateLead, 
+  deleteLead, 
+  addTask, 
+  toggleTask, 
+  deleteTask, 
+  addLog, 
+  deleteLog, 
+  isLeadOffline 
+} from "../services/lead.api.js";
 import "./Leads.css";
 
-// Dynamic API Integration configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-
 export default function Leads({ user }) {
-  const [leads, setLeads] = React.useState([]);
-  const [viewMode, setViewMode] = React.useState("kanban");
-  const [selectedLead, setSelectedLead] = React.useState(null);
-  const [showCreateModal, setShowCreateModal] = React.useState(false);
-  const [modalStep, setModalStep] = React.useState(1);
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [industryFilter, setIndustryFilter] = React.useState("All");
-  const [scoreFilter, setScoreFilter] = React.useState("All"); // "All", "Hot", "Warm", "Cold"
-  const [expandedChecklistCardId, setExpandedChecklistCardId] = React.useState(null);
+  const [leads, setLeads] = useState([]);
+  const [viewMode, setViewMode] = useState("kanban");
+  const [selectedLead, setSelectedLead] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [modalStep, setModalStep] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [industryFilter, setIndustryFilter] = useState("All");
+  const [scoreFilter, setScoreFilter] = useState("All"); 
+  const [expandedChecklistCardId, setExpandedChecklistCardId] = useState(null);
 
   // Native Drag and Drop State
-  const [draggingLeadId, setDraggingLeadId] = React.useState(null);
-  const [activeDragOverStage, setActiveDragOverStage] = React.useState(null);
+  const [draggingLeadId, setDraggingLeadId] = useState(null);
+  const [activeDragOverStage, setActiveDragOverStage] = useState(null);
 
   // New checklist task on the fly
-  const [newChecklistLabel, setNewChecklistLabel] = React.useState("");
+  const [newChecklistLabel, setNewChecklistLabel] = useState("");
 
   // Server connection status indicator
-  const [apiConnected, setApiConnected] = React.useState(false);
+  const [apiConnected, setApiConnected] = useState(false);
 
-  // Mock initial leads data as fallback
+  // Premium Custom Delete Modal State
+  const [deleteConfirmation, setDeleteConfirmation] = useState({
+    isOpen: false,
+    type: null,
+    id: null,
+    extraId: null,
+    message: ""
+  });
+
+  // Load leads from API with local persistence failover
+  useEffect(() => {
+    const fetchLeads = async () => {
+      try {
+        const data = await getLeads();
+        // If server data exists, load it; else use local failovers or mocks safely
+        if (data && data.length > 0) {
+          setLeads(data);
+        } else {
+          setLeads(mockLeadsData);
+        }
+        setApiConnected(!isLeadOffline);
+      } catch (err) {
+        console.error("Failed to load B2B leads, mounting offline mock set.", err);
+        setLeads(mockLeadsData);
+        setApiConnected(false);
+      }
+    };
+
+    fetchLeads();
+  }, []);
+
+  // Mock initial leads data fallback (Fixed unclosed syntax crash)
   const mockLeadsData = [
     {
       _id: "lead_1",
       companyName: "Tata Motors Defence Division",
       industry: "Automotive",
       companySize: "500+",
-      annualRevenue: 45000000, // ₹4.5 Crore
+      annualRevenue: 45000000, 
       address: { city: "Pune", country: "India" },
       contacts: [
         { name: "Dr. Anil Mukherji", designation: "Chief Procurement Officer", email: "anil.m@tatamotors.com", phone: "+91 22 6665 8282", isPrimary: true },
@@ -87,7 +127,7 @@ export default function Leads({ user }) {
       companyName: "L&T Heavy Engineering",
       industry: "Heavy Machinery",
       companySize: "500+",
-      annualRevenue: 120000000, // ₹12 Crore
+      annualRevenue: 120000000, 
       address: { city: "Hazira", country: "India" },
       contacts: [
         { name: "Meera Deshmukh", designation: "VP Operations", email: "meera.d@lntecc.com", phone: "+91 26 5244 1100", isPrimary: true }
@@ -112,34 +152,10 @@ export default function Leads({ user }) {
     },
     {
       _id: "lead_3",
-      companyName: "Haldiram Processors Ltd",
-      industry: "Other",
-      companySize: "201-500",
-      annualRevenue: 8500000, // ₹85 Lakhs
-      address: { city: "Nagpur", country: "India" },
-      contacts: [
-        { name: "Rajesh Haldiram", designation: "Director Procurement", email: "r.procure@haldiram.com", phone: "+91 71 2277 9900", isPrimary: true }
-      ],
-      status: "New",
-      source: "Website Inbound",
-      assignedBDA: { name: "Pooja Patel", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80" },
-      leadScore: 64,
-      customFields: {
-        preferredMaterial: "SS316L Food Grade",
-        certification: "FDA Approved Material"
-      },
-      tasks: [
-        { id: "t3_1", label: "Confirm FDA food safety certificates", completed: false },
-        { id: "t3_2", label: "Log procurement director callback", completed: false }
-      ],
-      logs: []
-    },
-    {
-      _id: "lead_4",
       companyName: "Hindustan Aeronautics (HAL)",
       industry: "Aerospace",
       companySize: "500+",
-      annualRevenue: 150000000, // ₹15 Crore
+      annualRevenue: 150000000, 
       address: { city: "Bengaluru", country: "India" },
       contacts: [
         { name: "Wing Cmdr. K. Rao (Retd.)", designation: "Director Aerospace Assemblies", email: "k.rao@hal-india.com", phone: "+91 80 2232 4433", isPrimary: true }
@@ -154,87 +170,32 @@ export default function Leads({ user }) {
         isoCertReq: "AS9100 Rev D"
       },
       tasks: [
-        { id: "t4_1", label: "Acquire AS9100 Rev D checklist sheets", completed: true },
-        { id: "t4_2", label: "Establish ultrasonic non-destructive testing costs", completed: true },
-        { id: "t4_3", label: "Approve Inconel turbine pin margins", completed: true }
+        { id: "t4_1", label: "Acquire AS9100 Rev D checklist sheets", completed: true }
       ],
-      logs: [
-        { id: "l4_1", date: "2026-05-19", type: "Email", subject: "Quotation Q-4082-01 Sent", summary: "Sent quote for Inconel engine pins. Valid for 30 days." }
-      ]
+      logs: []
     }
   ];
 
-  // Load leads from API with local persistence failover
-  React.useEffect(() => {
-    const fetchLeads = async () => {
-      try {
-        const token = localStorage.getItem("crm_access_token");
-        const headers = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        const response = await fetch(`${API_BASE_URL}/leads`, {
-          method: "GET",
-          headers,
-          credentials: "include"
-        });
-        if (response.ok) {
-          const res = await response.json();
-          if (res.success && res.data) {
-            setLeads(res.data);
-            setApiConnected(true);
-            localStorage.setItem("crm_leads_data", JSON.stringify(res.data));
-            return;
-          }
-        }
-      } catch (err) {
-        console.warn("Backend pipeline offline, fallback to local storage storage.");
-      }
-
-      // Local storage check
-      const localData = localStorage.getItem("crm_leads_data");
-      if (localData) {
-        try {
-          setLeads(JSON.parse(localData));
-        } catch (e) {
-          setLeads(mockLeadsData);
-        }
-      } else {
-        setLeads(mockLeadsData);
-        localStorage.setItem("crm_leads_data", JSON.stringify(mockLeadsData));
-      }
-      setApiConnected(false);
-    };
-
-    fetchLeads();
-  }, []);
-
-  // Save Leads helper
-  const persistLeads = (newLeadsData) => {
-    setLeads(newLeadsData);
-    localStorage.setItem("crm_leads_data", JSON.stringify(newLeadsData));
-  };
-
   // Lead Creation Form states
-  const [compName, setCompName] = React.useState("");
-  const [compIndustry, setCompIndustry] = React.useState("Automotive");
-  const [compSize, setCompSize] = React.useState("51-200");
-  const [compRevenue, setCompRevenue] = React.useState("");
-  const [compCity, setCompCity] = React.useState("");
-  const [compCountry, setCompCountry] = React.useState("India");
-  const [leadSource, setLeadSource] = React.useState("Direct RFQ (Request for Quote)");
-  const [leadScore, setLeadScore] = React.useState(75);
+  const [compName, setCompName] = useState("");
+  const [compIndustry, setCompIndustry] = useState("Automotive");
+  const [compSize, setCompSize] = useState("51-200");
+  const [compRevenue, setCompRevenue] = useState("");
+  const [compCity, setCompCity] = useState("");
+  const [compCountry, setCompCountry] = useState("India");
+  const [leadSource, setLeadSource] = useState("Direct RFQ (Request for Quote)");
+  const [leadScore, setLeadScore] = useState(75);
 
-  // Dynamic lists in Modal: Multi-contacts & Custom Specs
-  const [modalContacts, setModalContacts] = React.useState([
+  const [modalContacts, setModalContacts] = useState([
     { name: "", designation: "", email: "", phone: "", isPrimary: true }
   ]);
-  const [modalSpecs, setModalSpecs] = React.useState([
+  const [modalSpecs, setModalSpecs] = useState([
     { key: "preferredMaterial", value: "" },
     { key: "customTolerance", value: "" }
   ]);
 
-  const [formError, setFormError] = React.useState("");
+  const [formError, setFormError] = useState("");
 
-  // Helpers for multi-contacts in modal
   const addModalContactRow = () => {
     setModalContacts([...modalContacts, { name: "", designation: "", email: "", phone: "", isPrimary: false }]);
   };
@@ -245,7 +206,6 @@ export default function Leads({ user }) {
     setModalContacts(prev => prev.map((c, i) => i === idx ? { ...c, [field]: value } : c));
   };
 
-  // Helpers for dynamic custom specs in modal
   const addModalSpecRow = () => {
     setModalSpecs([...modalSpecs, { key: "", value: "" }]);
   };
@@ -270,35 +230,36 @@ export default function Leads({ user }) {
       }
     });
 
-    const newLead = {
-      _id: `lead_${Date.now()}`,
+    const leadPayload = {
       companyName: compName,
       industry: compIndustry,
       companySize: compSize,
       annualRevenue: parseFloat(compRevenue) || 0,
       address: { city: compCity || "Unknown", country: compCountry },
       contacts: modalContacts.filter(c => c.name),
-      status: "New",
       source: leadSource,
-      assignedBDA: { 
-        name: user.name, 
-        avatar: user.avatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80" 
-      },
       leadScore: parseInt(leadScore) || 50,
-      customFields: finalSpecsObj,
-      tasks: [
-        { id: `t_${Date.now()}_1`, label: "Complete initial requirements review call", completed: false },
-        { id: `t_${Date.now()}_2`, label: "Create catalog parts matching checklist", completed: false }
-      ],
-      logs: []
+      customFields: finalSpecsObj
     };
 
-    const updatedLeadsList = [newLead, ...leads];
-    persistLeads(updatedLeadsList);
+    try {
+      const created = await createLead(leadPayload);
+      setLeads(prev => [created, ...prev]);
+      setApiConnected(!isLeadOffline);
+    } catch (err) {
+      console.warn("Server Offline: Registering lead entity locally.", err);
+      const localFallback = {
+        ...leadPayload,
+        _id: `lead_local_${Date.now()}`,
+        assignedBDA: user ? { name: user.name, avatar: user.avatar } : { name: "Vikash Kumar" },
+        tasks: [],
+        logs: []
+      };
+      setLeads(prev => [localFallback, ...prev]);
+    }
+
     setShowCreateModal(false);
     setModalStep(1);
-    
-    // Clear inputs
     setCompName("");
     setCompRevenue("");
     setCompCity("");
@@ -308,84 +269,44 @@ export default function Leads({ user }) {
       { key: "customTolerance", value: "" }
     ]);
     setFormError("");
-
-    // API Sync
-    try {
-      const token = localStorage.getItem("crm_access_token");
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const response = await fetch(`${API_BASE_URL}/leads`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(newLead),
-        credentials: "include"
-      });
-      if (response.ok) {
-        const res = await response.json();
-        if (res.success && res.data) {
-          // Update temp ID with server id
-          persistLeads(updatedLeadsList.map(l => l._id === newLead._id ? res.data : l));
-        }
-      }
-    } catch (err) {
-      console.log("Registered lead offline-saved locally.");
-    }
   };
 
-  // Stages of the Kanban Pipeline
   const stages = ["New", "Contacted", "Qualified", "Quoted", "Negotiating", "Won", "Lost"];
 
-  // Filtered Leads
-  const filteredLeads = leads.filter(lead => {
-    const matchesSearch = lead.companyName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          lead.contacts.some(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                          lead.address?.city?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesIndustry = industryFilter === "All" || lead.industry === industryFilter;
-    
-    let matchesScore = true;
-    if (scoreFilter === "Hot") matchesScore = lead.leadScore > 80;
-    else if (scoreFilter === "Warm") matchesScore = lead.leadScore >= 50 && lead.leadScore <= 80;
-    else if (scoreFilter === "Cold") matchesScore = lead.leadScore < 50;
+  const filteredLeads = leads
+    .filter(lead => {
+      const matchesSearch = lead.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            lead.contacts?.some(c => c.name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                            lead.address?.city?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesIndustry = industryFilter === "All" || lead.industry === industryFilter;
+      
+      let matchesScore = true;
+      if (scoreFilter === "Hot") matchesScore = lead.leadScore > 80;
+      else if (scoreFilter === "Warm") matchesScore = lead.leadScore >= 50 && lead.leadScore <= 80;
+      else if (scoreFilter === "Cold") matchesScore = lead.leadScore < 50;
 
-    return matchesSearch && matchesIndustry && matchesScore;
-  });
+      return matchesSearch && matchesIndustry && matchesScore;
+    })
+    .sort((a, b) => (b.leadScore || 0) - (a.leadScore || 0));
 
-  // Promote lead status
   const promoteLeadStage = async (leadId, nextStatus) => {
-    let updatedLeads = [];
-    setLeads(prevLeads => {
-      updatedLeads = prevLeads.map(l => {
-        if (l._id === leadId) {
-          const updated = { ...l, status: nextStatus };
-          if (selectedLead && selectedLead._id === leadId) {
-            setSelectedLead(updated);
-          }
-          return updated;
-        }
-        return l;
-      });
-      localStorage.setItem("crm_leads_data", JSON.stringify(updatedLeads));
-      return updatedLeads;
-    });
-
-    // API Sync
     try {
-      const token = localStorage.getItem("crm_access_token");
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      await fetch(`${API_BASE_URL}/leads/${leadId}`, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify({ status: nextStatus }),
-        credentials: "include"
-      });
+      const updated = await updateLead(leadId, { status: nextStatus });
+      setLeads(prev => prev.map(l => l._id === leadId ? updated : l));
+      if (selectedLead && selectedLead._id === leadId) {
+        setSelectedLead(updated);
+      }
+      setApiConnected(!isLeadOffline);
     } catch (err) {
-      console.log("Updated status offline-saved locally.");
+      console.warn("Offline fallback state mutation directly on status index.");
+      setLeads(prev => prev.map(l => l._id === leadId ? { ...l, status: nextStatus } : l));
+      if (selectedLead && selectedLead._id === leadId) {
+        setSelectedLead(prev => ({ ...prev, status: nextStatus }));
+      }
     }
   };
 
-  // Move Lead Left/Right instantly (Quick Shifter)
   const shiftLeadStage = (leadId, direction) => {
     const lead = leads.find(l => l._id === leadId);
     if (!lead) return;
@@ -398,37 +319,33 @@ export default function Leads({ user }) {
     }
   };
 
-  // Delete Lead
-  const handleDeleteLead = async (leadId) => {
-    if (!window.confirm("Are you absolutely sure you want to permanently delete this lead? All associated tasks and logs will be permanently deleted.")) {
-      return;
-    }
-
-    const updated = leads.filter(l => l._id !== leadId);
-    persistLeads(updated);
-    if (selectedLead && selectedLead._id === leadId) {
-      setSelectedLead(null);
-    }
-
-    try {
-      const token = localStorage.getItem("crm_access_token");
-      const headers = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      await fetch(`${API_BASE_URL}/leads/${leadId}`, {
-        method: "DELETE",
-        headers,
-        credentials: "include"
-      });
-    } catch (err) {
-      console.log("Deleted lead locally.");
-    }
+  const handleDeleteLead = (leadId) => {
+    const leadObj = leads.find(l => l._id === leadId);
+    setDeleteConfirmation({
+      isOpen: true,
+      type: "lead",
+      id: leadId,
+      message: `Are you absolutely sure you want to permanently delete the lead record for "${leadObj?.companyName || "this company"}"? All associated checklist tasks and communication logs will be permanently deleted.`
+    });
   };
 
-  // Toggle checklist tasks
   const toggleTaskCompletion = async (leadId, taskId) => {
-    let updatedLeads = [];
-    setLeads(prev => {
-      updatedLeads = prev.map(l => {
+    try {
+      const updatedTask = await toggleTask(leadId, taskId);
+      setLeads(prev => prev.map(l => {
+        if (l._id === leadId) {
+          const updatedTasks = l.tasks.map(t => t.id === taskId ? updatedTask : t);
+          const updated = { ...l, tasks: updatedTasks };
+          if (selectedLead && selectedLead._id === leadId) {
+            setSelectedLead(updated);
+          }
+          return updated;
+        }
+        return l;
+      }));
+    } catch (err) {
+      // Local UI mutation toggle on network fail
+      setLeads(prev => prev.map(l => {
         if (l._id === leadId) {
           const updatedTasks = l.tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t);
           const updated = { ...l, tasks: updatedTasks };
@@ -438,128 +355,74 @@ export default function Leads({ user }) {
           return updated;
         }
         return l;
-      });
-      localStorage.setItem("crm_leads_data", JSON.stringify(updatedLeads));
-      return updatedLeads;
-    });
-
-    try {
-      const token = localStorage.getItem("crm_access_token");
-      const headers = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      await fetch(`${API_BASE_URL}/leads/${leadId}/tasks/${taskId}`, {
-        method: "PUT",
-        headers,
-        credentials: "include"
-      });
-    } catch (err) {
-      console.log("Toggled task locally.");
+      }));
     }
   };
 
-  // Add custom Checklist Task
   const handleAddChecklistTask = async (e) => {
     e.preventDefault();
     if (!newChecklistLabel.trim() || !selectedLead) return;
 
-    const tempId = `task_${Date.now()}`;
-    const newTask = { id: tempId, label: newChecklistLabel.trim(), completed: false };
-
-    let updatedLeads = [];
-    setLeads(prev => {
-      updatedLeads = prev.map(l => {
+    try {
+      const labelVal = newChecklistLabel.trim();
+      setNewChecklistLabel("");
+      
+      const createdTask = await addTask(selectedLead._id, labelVal);
+      setLeads(prev => prev.map(l => {
         if (l._id === selectedLead._id) {
-          const updated = { ...l, tasks: [...(l.tasks || []), newTask] };
+          const updated = { ...l, tasks: [...(l.tasks || []), createdTask] };
           setSelectedLead(updated);
           return updated;
         }
         return l;
-      });
-      localStorage.setItem("crm_leads_data", JSON.stringify(updatedLeads));
-      return updatedLeads;
-    });
-
-    const valToSubmit = newChecklistLabel.trim();
-    setNewChecklistLabel("");
-
-    try {
-      const token = localStorage.getItem("crm_access_token");
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const response = await fetch(`${API_BASE_URL}/leads/${selectedLead._id}/tasks`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ label: valToSubmit }),
-        credentials: "include"
-      });
-      if (response.ok) {
-        const res = await response.json();
-        if (res.success && res.data) {
-          setLeads(prev => {
-            const synced = prev.map(l => {
-              if (l._id === selectedLead._id) {
-                const updated = {
-                  ...l,
-                  tasks: l.tasks.map(t => t.id === tempId ? res.data : t)
-                };
-                setSelectedLead(updated);
-                return updated;
-              }
-              return l;
-            });
-            localStorage.setItem("crm_leads_data", JSON.stringify(synced));
-            return synced;
-          });
-        }
-      }
+      }));
     } catch (err) {
-      console.log("Checklist item added locally.");
+      const mockLocalTask = { id: `task_${Date.now()}`, label: newChecklistLabel.trim(), completed: false };
+      setNewChecklistLabel("");
+      setLeads(prev => prev.map(l => {
+        if (l._id === selectedLead._id) {
+          const updated = { ...l, tasks: [...(l.tasks || []), mockLocalTask] };
+          setSelectedLead(updated);
+          return updated;
+        }
+        return l;
+      }));
     }
   };
 
-  // Delete Checklist Task
   const handleDeleteChecklistTask = async (taskId) => {
     if (!selectedLead) return;
 
-    let updatedLeads = [];
-    setLeads(prev => {
-      updatedLeads = prev.map(l => {
+    try {
+      await deleteTask(selectedLead._id, taskId);
+      setLeads(prev => prev.map(l => {
         if (l._id === selectedLead._id) {
           const updated = { ...l, tasks: l.tasks.filter(t => t.id !== taskId) };
           setSelectedLead(updated);
           return updated;
         }
         return l;
-      });
-      localStorage.setItem("crm_leads_data", JSON.stringify(updatedLeads));
-      return updatedLeads;
-    });
-
-    try {
-      const token = localStorage.getItem("crm_access_token");
-      const headers = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      await fetch(`${API_BASE_URL}/leads/${selectedLead._id}/tasks/${taskId}`, {
-        method: "DELETE",
-        headers,
-        credentials: "include"
-      });
+      }));
     } catch (err) {
-      console.log("Deleted task locally.");
+      setLeads(prev => prev.map(l => {
+        if (l._id === selectedLead._id) {
+          const updated = { ...l, tasks: l.tasks.filter(t => t.id !== taskId) };
+          setSelectedLead(updated);
+          return updated;
+        }
+        return l;
+      }));
     }
   };
 
-  // Native Drag and Drop Event Handlers
   const handleDragStart = (e, leadId) => {
     setDraggingLeadId(leadId);
     e.dataTransfer.setData("text/plain", leadId);
-    e.currentTarget.classList.add("dragging");
   };
 
-  const handleDragEnd = (e) => {
+  const handleDragEnd = () => {
     setDraggingLeadId(null);
     setActiveDragOverStage(null);
-    e.currentTarget.classList.remove("dragging");
   };
 
   const handleDragOver = (e, stage) => {
@@ -585,18 +448,12 @@ export default function Leads({ user }) {
     setActiveDragOverStage(null);
   };
 
-  // Format Large Currency values in Rupees (₹)
   const formatPipelineRevenue = (revenue) => {
-    if (revenue >= 10000000) {
-      return `₹${(revenue / 10000000).toFixed(2)} Cr`;
-    }
-    if (revenue >= 100000) {
-      return `₹${(revenue / 100000).toFixed(1)} L`;
-    }
+    if (revenue >= 10000000) return `₹${(revenue / 10000000).toFixed(2)} Cr`;
+    if (revenue >= 100000) return `₹${(revenue / 100000).toFixed(1)} L`;
     return `₹${revenue.toLocaleString("en-IN")}`;
   };
 
-  // Calculate columns statistics (Financial Volumes & count)
   const getColumnStats = (stage) => {
     const stageLeads = filteredLeads.filter(l => l.status === stage);
     const totalRev = stageLeads.reduce((sum, l) => sum + l.annualRevenue, 0);
@@ -606,7 +463,6 @@ export default function Leads({ user }) {
     };
   };
 
-  // Timeline logs details helpers
   const getLogIconDetails = (logType) => {
     switch (logType) {
       case "Call": return { icon: PhoneCall, color: "text-success", bg: "bg-success-light" };
@@ -617,148 +473,115 @@ export default function Leads({ user }) {
     }
   };
 
-  // Quick log adding
-  const [newLogType, setNewLogType] = React.useState("Call");
-  const [newLogSubject, setNewLogSubject] = React.useState("");
-  const [newLogSummary, setNewLogSummary] = React.useState("");
+  const [newLogType, setNewLogType] = useState("Call");
+  const [newLogSubject, setNewLogSubject] = useState("");
+  const [newLogSummary, setNewLogSummary] = useState("");
 
   const handleAddLog = async (e) => {
     e.preventDefault();
     if (!newLogSubject || !newLogSummary || !selectedLead) return;
 
-    const tempId = `log_${Date.now()}`;
-    const newLog = {
-      id: tempId,
-      date: new Date().toISOString().split("T")[0],
+    const logPayload = {
       type: newLogType,
       subject: newLogSubject,
       summary: newLogSummary,
-      contactPerson: selectedLead.contacts.find(c => c.isPrimary)?.name || "Representative"
+      date: new Date().toISOString().split("T")[0],
+      contactPerson: selectedLead.contacts?.find(c => c.isPrimary)?.name || "Representative"
     };
-
-    let updatedLeads = [];
-    setLeads(prev => {
-      updatedLeads = prev.map(l => {
-        if (l._id === selectedLead._id) {
-          const updated = { ...l, logs: [newLog, ...(l.logs || [])] };
-          setSelectedLead(updated);
-          return updated;
-        }
-        return l;
-      });
-      localStorage.setItem("crm_leads_data", JSON.stringify(updatedLeads));
-      return updatedLeads;
-    });
-
-    const submitType = newLogType;
-    const submitSubject = newLogSubject;
-    const submitSummary = newLogSummary;
 
     setNewLogSubject("");
     setNewLogSummary("");
 
     try {
-      const token = localStorage.getItem("crm_access_token");
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const response = await fetch(`${API_BASE_URL}/leads/${selectedLead._id}/logs`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ type: submitType, subject: submitSubject, summary: submitSummary }),
-        credentials: "include"
-      });
-      if (response.ok) {
-        const res = await response.json();
-        if (res.success && res.data) {
-          setLeads(prev => {
-            const synced = prev.map(l => {
-              if (l._id === selectedLead._id) {
-                const updated = {
-                  ...l,
-                  logs: l.logs.map(log => log.id === tempId ? res.data : log)
-                };
-                setSelectedLead(updated);
-                return updated;
-              }
-              return l;
-            });
-            localStorage.setItem("crm_leads_data", JSON.stringify(synced));
-            return synced;
-          });
-        }
-      }
-    } catch (err) {
-      console.log("Logged call locally.");
-    }
-  };
-
-  // Delete Log
-  const handleDeleteLog = async (logId) => {
-    if (!selectedLead || !window.confirm("Delete this communication activity log?")) return;
-
-    let updatedLeads = [];
-    setLeads(prev => {
-      updatedLeads = prev.map(l => {
+      const createdLog = await addLog(selectedLead._id, logPayload);
+      setLeads(prev => prev.map(l => {
         if (l._id === selectedLead._id) {
-          const updated = { ...l, logs: l.logs.filter(log => log.id !== logId) };
+          const updated = { ...l, logs: [createdLog, ...(l.logs || [])] };
           setSelectedLead(updated);
           return updated;
         }
         return l;
-      });
-      localStorage.setItem("crm_leads_data", JSON.stringify(updatedLeads));
-      return updatedLeads;
-    });
-
-    try {
-      const token = localStorage.getItem("crm_access_token");
-      const headers = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      await fetch(`${API_BASE_URL}/leads/${selectedLead._id}/logs/${logId}`, {
-        method: "DELETE",
-        headers,
-        credentials: "include"
-      });
+      }));
     } catch (err) {
-      console.log("Deleted log locally.");
+      const offlineLog = { ...logPayload, id: `log_${Date.now()}` };
+      setLeads(prev => prev.map(l => {
+        if (l._id === selectedLead._id) {
+          const updated = { ...l, logs: [offlineLog, ...(l.logs || [])] };
+          setSelectedLead(updated);
+          return updated;
+        }
+        return l;
+      }));
     }
   };
 
-  // Export pipeline leads as CSV spreadsheet file (RFC 4180 aligned)
+  const handleDeleteLog = (logId) => {
+    if (!selectedLead) return;
+    setDeleteConfirmation({
+      isOpen: true,
+      type: "log",
+      id: logId,
+      extraId: selectedLead._id,
+      message: "Are you sure you want to permanently delete this communication activity log entry from the history log?"
+    });
+  };
+
+  const executeDeleteOperation = async () => {
+    const { type, id, extraId } = deleteConfirmation;
+    setDeleteConfirmation(prev => ({ ...prev, isOpen: false }));
+
+    if (type === "lead") {
+      try {
+        await deleteLead(id);
+        setLeads(prev => prev.filter(l => l._id !== id));
+        if (selectedLead && selectedLead._id === id) {
+          setSelectedLead(null);
+        }
+        setApiConnected(!isLeadOffline);
+      } catch (err) {
+        console.error("Failed to delete lead", err);
+      }
+    } else if (type === "log") {
+      try {
+        await deleteLog(extraId, id);
+        setLeads(prev => prev.map(l => {
+          if (l._id === extraId) {
+            const updated = { ...l, logs: l.logs.filter(log => log.id !== id && log._id !== id) };
+            setSelectedLead(updated);
+            return updated;
+          }
+          return l;
+        }));
+        setApiConnected(!isLeadOffline);
+      } catch (err) {
+        console.error("Failed to delete log", err);
+      }
+    }
+  };
+
   const handleExportCSV = () => {
     const headers = [
-      "Company Name",
-      "Industry",
-      "Company Size",
-      "Annual Revenue (INR)",
-      "City",
-      "Country",
-      "Lead Score",
-      "Pipeline Stage",
-      "Inbound Source",
-      "Primary Contact",
-      "Primary Contact Email",
-      "Primary Contact Phone",
-      "Custom Engineering Specs"
+      "Company Name", "Industry", "Company Size", "Annual Revenue (INR)", 
+      "City", "Country", "Lead Score", "Pipeline Stage", "Inbound Source", 
+      "Primary Contact", "Primary Contact Email", "Primary Contact Phone", "Custom Engineering Specs"
     ];
 
     const rows = filteredLeads.map(lead => {
       const primaryContact = lead.contacts?.find(c => c.isPrimary) || lead.contacts?.[0] || {};
-      
       const specsString = lead.customFields 
         ? Object.entries(lead.customFields).map(([k, v]) => `${k}:${v}`).join("; ")
         : "";
 
       return [
-        `"${lead.companyName.replace(/"/g, '""')}"`,
-        `"${lead.industry}"`,
+        `"${lead.companyName?.replace(/"/g, '""') || ""}"`,
+        `"${lead.industry || ""}"`,
         `"${lead.companySize || "N/A"}"`,
-        lead.annualRevenue,
+        lead.annualRevenue || 0,
         `"${lead.address?.city || "Unknown"}"`,
         `"${lead.address?.country || "India"}"`,
-        lead.leadScore,
-        `"${lead.status}"`,
-        `"${lead.source}"`,
+        lead.leadScore || 0,
+        `"${lead.status || ""}"`,
+        `"${lead.source || ""}"`,
         `"${(primaryContact.name || "").replace(/"/g, '""')}"`,
         `"${primaryContact.email || ""}"`,
         `"${primaryContact.phone || ""}"`,
@@ -766,11 +589,7 @@ export default function Leads({ user }) {
       ];
     });
 
-    const csvContent = "\ufeff" + [
-      headers.join(","),
-      ...rows.map(r => r.join(","))
-    ].join("\n");
-
+    const csvContent = "\ufeff" + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -783,7 +602,37 @@ export default function Leads({ user }) {
 
   return (
     <div className="leads-view fade-in">
-      {/* Dynamic Advanced Controls Bar */}
+      {deleteConfirmation.isOpen && (
+        <div className="catalog-modal-backdrop fade-in" style={{ zIndex: 1100 }}>
+          <div className="catalog-modal glass-panel active-pulse scale-in" style={{ maxWidth: "420px", textAlign: "center", padding: "30px" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
+              <div style={{ width: "60px", height: "60px", borderRadius: "50%", background: "rgba(239, 68, 68, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(239, 68, 68, 0.3)" }}>
+                <Trash2 size={24} style={{ color: "#ef4444" }} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: "18px", color: "var(--text-primary)" }}>Confirm Deletion</h3>
+              <p style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: "1.5", margin: 0 }}>
+                {deleteConfirmation.message}
+              </p>
+              <div style={{ display: "flex", gap: "12px", width: "100%", marginTop: "12px" }}>
+                <button 
+                  className="btn btn-secondary" 
+                  style={{ flex: 1 }}
+                  onClick={() => setDeleteConfirmation({ isOpen: false, type: null, id: null, extraId: null, message: "" })}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="btn" 
+                  style={{ flex: 1, background: "#ef4444", color: "#fff", border: "1px solid #dc2626" }}
+                  onClick={executeDeleteOperation}
+                >
+                  Confirm Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="leads-controls glass-panel">
         <div className="search-filter-wrap">
           <div className="control-search">
@@ -812,7 +661,6 @@ export default function Leads({ user }) {
             </select>
           </div>
 
-          {/* Lead Score Filter Range Dropdown */}
           <div className="control-filter">
             <SlidersHorizontal size={14} />
             <select 
@@ -827,7 +675,6 @@ export default function Leads({ user }) {
             </select>
           </div>
 
-          {/* Connection status tag */}
           <div className={`connection-badge ${apiConnected ? "connected" : "offline"}`}>
             {apiConnected ? (
               <>
@@ -859,11 +706,10 @@ export default function Leads({ user }) {
             </button>
           </div>
 
-          {/* Export Pipeline Spreadsheet */}
           <button 
             className="btn btn-secondary csv-export-btn"
             onClick={handleExportCSV}
-            title="Download pipeline to Excel/CSV spreadsheet"
+            title="Download pipeline spreadsheet"
           >
             <Download size={14} /> Export CSV
           </button>
@@ -880,7 +726,6 @@ export default function Leads({ user }) {
         </div>
       </div>
 
-      {/* Main Kanban pipeline layout with native drag & drop */}
       {viewMode === "kanban" ? (
         <div className="pipeline-board">
           {stages.map((stage) => {
@@ -896,8 +741,6 @@ export default function Leads({ user }) {
                 onDragLeave={(e) => handleDragLeave(e, stage)}
                 onDrop={(e) => handleDrop(e, stage)}
               >
-                
-                {/* Column Header */}
                 <div className="column-header">
                   <div className="title-area">
                     <h4>{stage}</h4>
@@ -947,7 +790,6 @@ export default function Leads({ user }) {
                           <span>{lead.address?.city || "Unknown City"}</span>
                         </div>
 
-                        {/* Collapsible Action Checklist directly on card */}
                         {totalTasks > 0 && (
                           <div className="card-task-progress-block" onClick={(e) => e.stopPropagation()}>
                             <button 
@@ -961,7 +803,6 @@ export default function Leads({ user }) {
                               </div>
                             </button>
 
-                            {/* Checklist expansion pane */}
                             {isChecklistExpanded ? (
                               <div className="card-expanded-checklist fade-in">
                                 {lead.tasks.map((task) => (
@@ -986,7 +827,6 @@ export default function Leads({ user }) {
                           </div>
                         )}
 
-                        {/* Card shifters & BDA Avatar */}
                         <div className="card-footer-controls-refined" onClick={(e) => e.stopPropagation()}>
                           <div className="arrow-controls-wrap">
                             <button 
@@ -996,9 +836,7 @@ export default function Leads({ user }) {
                             >
                               <ChevronLeft size={13} />
                             </button>
-                            
                             <span className="stage-footer-indicator">{lead.status}</span>
-                            
                             <button 
                               className="shift-arrow-btn" 
                               onClick={() => shiftLeadStage(lead._id, "right")}
@@ -1007,15 +845,15 @@ export default function Leads({ user }) {
                               <ChevronRight size={13} />
                             </button>
                           </div>
-
-                          {/* BDA Avatar icon */}
                           {lead.assignedBDA && (
-                            <img 
-                              src={lead.assignedBDA.avatar} 
-                              alt={lead.assignedBDA.name} 
-                              className="card-bda-avatar"
-                              title={`Assigned to ${lead.assignedBDA.name}`}
-                            />
+                            <div 
+                              className="card-bda-avatar-placeholder" 
+                              title={typeof lead.assignedBDA === "object" && lead.assignedBDA.name ? `Assigned to ${lead.assignedBDA.name}` : "Assigned"}
+                            >
+                              {(typeof lead.assignedBDA === "object" && lead.assignedBDA.name) 
+                                ? lead.assignedBDA.name.charAt(0) 
+                                : "A"}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1027,7 +865,6 @@ export default function Leads({ user }) {
           })}
         </div>
       ) : (
-        /* Spreadsheet table layout */
         <div className="table-card glass-panel fade-in">
           <table className="leads-table">
             <thead>
@@ -1045,9 +882,7 @@ export default function Leads({ user }) {
             <tbody>
               {filteredLeads.map((lead) => (
                 <tr key={lead._id} className="table-row-hover" onClick={() => setSelectedLead(lead)}>
-                  <td>
-                    <strong>{lead.companyName}</strong>
-                  </td>
+                  <td><strong>{lead.companyName}</strong></td>
                   <td>{lead.industry}</td>
                   <td>{lead.address?.city || "Unknown"}, {lead.address?.country || "India"}</td>
                   <td>
@@ -1065,14 +900,11 @@ export default function Leads({ user }) {
                       "badge-info"
                     }`}>{lead.status}</span>
                   </td>
-                  <td>
-                    <div className="table-score-badge">{lead.leadScore}</div>
-                  </td>
+                  <td><div className="table-score-badge">{lead.leadScore}</div></td>
                   <td onClick={(e) => e.stopPropagation()}>
                     <button 
                       className="table-delete-row-btn" 
                       onClick={() => handleDeleteLead(lead._id)}
-                      title="Purge lead records"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -1084,7 +916,6 @@ export default function Leads({ user }) {
         </div>
       )}
 
-      {/* Slide-out detail Drawer */}
       {selectedLead && (
         <div className="lead-drawer-backdrop" onClick={() => setSelectedLead(null)}>
           <div className="lead-drawer glass-panel" onClick={(e) => e.stopPropagation()}>
@@ -1098,7 +929,6 @@ export default function Leads({ user }) {
                 <button 
                   className="btn btn-secondary purge-lead-btn"
                   onClick={() => handleDeleteLead(selectedLead._id)}
-                  title="Purge Lead Records"
                 >
                   <Trash2 size={13} />
                 </button>
@@ -1109,7 +939,6 @@ export default function Leads({ user }) {
             </div>
 
             <div className="drawer-body">
-              {/* Premium Visual Chevron Pipeline progression tracker */}
               <div className="drawer-section workflow-progression">
                 <h4>Interactive Pipeline Stage Tracker</h4>
                 <div className="chevron-tracker">
@@ -1121,9 +950,9 @@ export default function Leads({ user }) {
                     if (selectedLead.status === stage) {
                       stepClass = "active";
                     } else if (selectedLead.status === "Lost" && stage === "Won") {
-                      stepClass = "future"; // skip Won
+                      stepClass = "future";
                     } else if (selectedLead.status === "Won" && stage === "Lost") {
-                      stepClass = "future"; // skip Lost
+                      stepClass = "future";
                     } else if (stepIndex < currentIndex) {
                       stepClass = "completed";
                     }
@@ -1133,7 +962,6 @@ export default function Leads({ user }) {
                         key={stage}
                         className={`chevron-step ${stepClass}`}
                         onClick={() => promoteLeadStage(selectedLead._id, stage)}
-                        title={`Move pipeline to ${stage}`}
                       >
                         {stage}
                       </button>
@@ -1142,15 +970,12 @@ export default function Leads({ user }) {
                 </div>
               </div>
 
-              {/* Action checklist tasks */}
               <div className="drawer-section">
                 <h4>Pre-Qualification Action Items</h4>
-                
-                {/* Dynamic Task Checklist Form */}
                 <form onSubmit={handleAddChecklistTask} className="drawer-add-checklist-form">
                   <input 
                     type="text" 
-                    placeholder="Add custom pre-qualification step... (e.g. Verify metallurgical tolerances)"
+                    placeholder="Add custom pre-qualification step..."
                     value={newChecklistLabel}
                     onChange={(e) => setNewChecklistLabel(e.target.value)}
                     className="drawer-checklist-input"
@@ -1178,7 +1003,6 @@ export default function Leads({ user }) {
                         <button 
                           className="task-delete-btn"
                           onClick={() => handleDeleteChecklistTask(task.id)}
-                          title="Delete pre-qualification item"
                         >
                           <Trash2 size={11} />
                         </button>
@@ -1190,7 +1014,6 @@ export default function Leads({ user }) {
                 )}
               </div>
 
-              {/* Contacts info */}
               <div className="drawer-section">
                 <h4>Stakeholder Contacts Directory</h4>
                 <div className="contacts-subgrid">
@@ -1201,7 +1024,6 @@ export default function Leads({ user }) {
                         {contact.isPrimary && <span className="badge badge-success badge-small">Primary</span>}
                       </div>
                       <span className="contact-designation">{contact.designation}</span>
-                      
                       <div className="contact-meta-field">
                         <Mail size={12} />
                         <span>{contact.email}</span>
@@ -1215,7 +1037,6 @@ export default function Leads({ user }) {
                 </div>
               </div>
 
-              {/* Technical Specifications Map with Rupees (₹) */}
               <div className="drawer-section">
                 <h4>Custom Engineering Specifications & Value</h4>
                 <div className="specs-drawer-grid">
@@ -1232,10 +1053,8 @@ export default function Leads({ user }) {
                 </div>
               </div>
 
-              {/* Communication Activity log with colorful icons */}
               <div className="drawer-section">
                 <h4>Communication Activity Logger</h4>
-                
                 <form onSubmit={handleAddLog} className="quick-logger-form">
                   <div className="log-inputs-row">
                     <select 
@@ -1248,16 +1067,14 @@ export default function Leads({ user }) {
                       <option value="Meeting">Meeting Minutes</option>
                       <option value="Site Visit">Site Survey Visit</option>
                     </select>
-
                     <input 
                       type="text" 
-                      placeholder="Discussion Subject (e.g. Chemical testing results)" 
+                      placeholder="Discussion Subject..." 
                       value={newLogSubject}
                       onChange={(e) => setNewLogSubject(e.target.value)}
                       className="log-subject-input"
                     />
                   </div>
-
                   <textarea 
                     placeholder="Enter exhaustive summary of conversation..." 
                     value={newLogSummary}
@@ -1265,16 +1082,14 @@ export default function Leads({ user }) {
                     className="log-summary-textarea"
                     rows={2}
                   />
-
                   <button type="submit" className="btn btn-secondary log-submit-btn">
                     <PlusCircle size={14} /> Log Communication Detail
                   </button>
                 </form>
 
-                {/* Logs feed list */}
                 <div className="logs-timeline">
                   {selectedLead.logs?.length === 0 ? (
-                    <div className="empty-logs-desc">No communications logged yet. Use the logger above.</div>
+                    <div className="empty-logs-desc">No communications logged yet.</div>
                   ) : (
                     selectedLead.logs?.map((log, idx) => {
                       const details = getLogIconDetails(log.type);
@@ -1292,7 +1107,6 @@ export default function Leads({ user }) {
                                 <button 
                                   className="log-delete-inline-btn"
                                   onClick={() => handleDeleteLog(log.id || log._id)}
-                                  title="Delete log item"
                                 >
                                   <Trash2 size={10} />
                                 </button>
@@ -1306,13 +1120,11 @@ export default function Leads({ user }) {
                   )}
                 </div>
               </div>
-
             </div>
           </div>
         </div>
       )}
 
-      {/* ADVANCED DYNAMIC LEAD CREATION MODAL */}
       {showCreateModal && (
         <div className="lead-modal-backdrop" onClick={() => { setShowCreateModal(false); setModalStep(1); }}>
           <div className="lead-modal glass-panel fade-in" onClick={(e) => e.stopPropagation()}>
@@ -1329,7 +1141,6 @@ export default function Leads({ user }) {
             <form onSubmit={handleCreateLead} className="modal-form-body">
               {formError && <div className="auth-error-badge">{formError}</div>}
 
-              {/* Progress Stepper Header */}
               <div className="modal-stepper-tracker">
                 <div className={`step-item ${modalStep === 1 ? "active" : modalStep > 1 ? "completed" : ""}`}>
                   <span className="step-num">{modalStep > 1 ? "✓" : "1"}</span>
@@ -1347,7 +1158,6 @@ export default function Leads({ user }) {
                 </div>
               </div>
 
-              {/* Step 1: Corporate Profile */}
               {modalStep === 1 && (
                 <div className="step-slide-container fade-in">
                   <div className="form-section-title">Corporate Profile</div>
@@ -1363,7 +1173,6 @@ export default function Leads({ user }) {
                         required
                       />
                     </div>
-
                     <div className="form-group">
                       <label className="form-label">Industry Vertical</label>
                       <select 
@@ -1378,7 +1187,6 @@ export default function Leads({ user }) {
                         <option value="Other">Other Vertical</option>
                       </select>
                     </div>
-
                     <div className="form-group">
                       <label className="form-label">Company Size</label>
                       <select 
@@ -1393,7 +1201,6 @@ export default function Leads({ user }) {
                         <option value="500+">500+ Enterprise</option>
                       </select>
                     </div>
-
                     <div className="form-group">
                       <label className="form-label">Annual Revenue Potential (₹)</label>
                       <input 
@@ -1404,7 +1211,6 @@ export default function Leads({ user }) {
                         className="modal-input"
                       />
                     </div>
-
                     <div className="form-group">
                       <label className="form-label">City</label>
                       <input 
@@ -1415,7 +1221,6 @@ export default function Leads({ user }) {
                         className="modal-input"
                       />
                     </div>
-
                     <div className="form-group">
                       <label className="form-label">Country</label>
                       <input 
@@ -1430,7 +1235,6 @@ export default function Leads({ user }) {
                 </div>
               )}
 
-              {/* Step 2: Multi-contacts stakeholder list */}
               {modalStep === 2 && (
                 <div className="step-slide-container fade-in scrollable-step-pane">
                   <div className="form-section-title flex-title">
@@ -1472,9 +1276,8 @@ export default function Leads({ user }) {
                               required={contact.isPrimary}
                             />
                           </div>
-
                           <div className="form-group">
-                            <label className="form-label">Designation / Department</label>
+                            <label className="form-label">Designation</label>
                             <input 
                               type="text" 
                               placeholder="e.g. Purchase Director" 
@@ -1483,7 +1286,6 @@ export default function Leads({ user }) {
                               className="modal-input"
                             />
                           </div>
-
                           <div className="form-group">
                             <label className="form-label">Email *</label>
                             <input 
@@ -1495,7 +1297,6 @@ export default function Leads({ user }) {
                               required={contact.isPrimary}
                             />
                           </div>
-
                           <div className="form-group">
                             <label className="form-label">Phone</label>
                             <input 
@@ -1513,7 +1314,6 @@ export default function Leads({ user }) {
                 </div>
               )}
 
-              {/* Step 3: Technical Specifications & Assignment */}
               {modalStep === 3 && (
                 <div className="step-slide-container fade-in scrollable-step-pane">
                   <div className="form-section-title flex-title">
@@ -1532,14 +1332,14 @@ export default function Leads({ user }) {
                       <div key={idx} className="dynamic-spec-row fade-in">
                         <input 
                           type="text" 
-                          placeholder="Specification Name (e.g., surfaceFinish)" 
+                          placeholder="Specification Name..." 
                           value={spec.key}
                           onChange={(e) => updateModalSpec(idx, "key", e.target.value)}
                           className="spec-key-input"
                         />
                         <input 
                           type="text" 
-                          placeholder="Spec value details (e.g., Ra < 0.4µm)" 
+                          placeholder="Spec value details..." 
                           value={spec.value}
                           onChange={(e) => updateModalSpec(idx, "value", e.target.value)}
                           className="spec-val-input"
@@ -1589,7 +1389,6 @@ export default function Leads({ user }) {
                 </div>
               )}
 
-              {/* Bottom Nav Controls */}
               <div className="modal-actions-bar">
                 {modalStep > 1 ? (
                   <button 
@@ -1641,7 +1440,6 @@ export default function Leads({ user }) {
           </div>
         </div>
       )}
-
     </div>
   );
 }

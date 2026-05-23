@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   UserCheck
 } from "lucide-react";
+import { getLeads } from "../services/lead.api.js";
+import { getQuotations } from "../services/quotation.api.js";
 import "./Performance.css";
 
 export default function Performance({ user }) {
@@ -23,16 +25,42 @@ export default function Performance({ user }) {
   const [quotes, setQuotes] = React.useState([]);
 
   React.useEffect(() => {
-    // Load leads
+    // 1. Initial load from local cache for super-fast render
     const localLeads = localStorage.getItem("crm_leads_data");
     if (localLeads) {
       try { setLeads(JSON.parse(localLeads)); } catch (e) {}
     }
-    // Load quotes
     const localQuotes = localStorage.getItem("crm_quotes_data");
     if (localQuotes) {
       try { setQuotes(JSON.parse(localQuotes)); } catch (e) {}
     }
+
+    // 2. Fetch live data from the server APIs asynchronously
+    let active = true;
+    const fetchLiveData = async () => {
+      try {
+        const liveLeads = await getLeads();
+        if (active && liveLeads && liveLeads.length > 0) {
+          setLeads(liveLeads);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch live leads for performance:", err);
+      }
+      try {
+        const liveQuotes = await getQuotations();
+        if (active && liveQuotes && liveQuotes.length > 0) {
+          setQuotes(liveQuotes);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch live quotations for performance:", err);
+      }
+    };
+
+    fetchLiveData();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Dynamically compile employee stats based on lead logs and quotes

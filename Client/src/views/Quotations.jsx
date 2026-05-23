@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useCallback } from "react"; // Fixed missing React core import
 import { 
   Plus, 
   Search, 
@@ -25,40 +26,36 @@ import api from "../api/axios.js";
 import "./Quotations.css";
 
 export default function Quotations({ user }) {
-  const [activeQuotation, setActiveQuotation] = React.useState(null);
-  const [isCreating, setIsCreating] = React.useState(false);
-  const [catalogSearch, setCatalogSearch] = React.useState("");
-  const [catalogCategory, setCatalogCategory] = React.useState("All");
+  // Fixed: Initialized as null instead of array to match object usage down the tree
+  const [activeQuotation, setActiveQuotation] = useState(null); 
+  const [isCreating, setIsCreating] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogCategory, setCatalogCategory] = useState("All");
 
-  // Standard Product Catalog (SKUs) fallback
-  const [catalog, setCatalog] = React.useState([
+  const [catalog, setCatalog] = useState([
     { sku: "TI-FAST-01", name: "Grade 5 Titanium M12 Fasteners", basePrice: 1250, unitOfMeasure: "pcs", category: "Titanium" },
     { sku: "AL-PLATE-06", name: "Aluminium 6061-T6 Precision Sheets", basePrice: 4800, unitOfMeasure: "sheets", category: "Aluminium" },
     { sku: "IN-PIN-718", name: "Inconel 718 Custom Turbine Pins", basePrice: 8500, unitOfMeasure: "pcs", category: "Inconel" },
     { sku: "FE-BOLT-4140", name: "AISI 4140 Anchor Bolts M36", basePrice: 2200, unitOfMeasure: "pcs", category: "Steel" }
   ]);
 
-  const [quotes, setQuotes] = React.useState([]);
-  const [leads, setLeads] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [isOfflineMode, setIsOfflineMode] = React.useState(false);
+  const [quotes, setQuotes] = useState([]);
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
-  // Pricing Builder State
-  const [selectedCustomer, setSelectedCustomer] = React.useState("Tata Motors Defence Division");
-  const [selectedItems, setSelectedItems] = React.useState([]);
-  const [discountVal, setDiscountVal] = React.useState(0);
-  const [selectedPayment, setSelectedPayment] = React.useState("50% Advance / 50% on Delivery");
-  const [selectedShipping, setSelectedShipping] = React.useState("EXW");
+  const [selectedCustomer, setSelectedCustomer] = useState("Tata Motors Defence Division");
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [discountVal, setDiscountVal] = useState(0);
+  const [selectedPayment, setSelectedPayment] = useState("50% Advance / 50% on Delivery");
+  const [selectedShipping, setSelectedShipping] = useState("EXW");
 
-  // Mock blueprint uploading state for configured rows
-  const [blueprintUploadProgress, setBlueprintUploadProgress] = React.useState({}); // row index -> progress (0 to 100)
-
-  // PDF Print preview modal toggler
-  const [showInvoicePrintPreview, setShowInvoicePrintPreview] = React.useState(false);
-  const [revisingQuoteId, setRevisingQuoteId] = React.useState(null);
+  const [blueprintUploadProgress, setBlueprintUploadProgress] = useState({}); 
+  const [showInvoicePrintPreview, setShowInvoicePrintPreview] = useState(false);
+  const [revisingQuoteId, setRevisingQuoteId] = useState(null);
 
   // Load B2B Leads dynamically
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchLeads = async () => {
       try {
         const response = await api.get("/leads");
@@ -86,7 +83,7 @@ export default function Quotations({ user }) {
   }, []);
 
   // Fetch Catalog items dynamically
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchCatalog = async () => {
       try {
         const data = await getProducts();
@@ -107,7 +104,7 @@ export default function Quotations({ user }) {
   }, []);
 
   // Fetch Quotations dynamically
-  const fetchQuotes = React.useCallback(async () => {
+  const fetchQuotes = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getQuotations();
@@ -120,11 +117,10 @@ export default function Quotations({ user }) {
     }
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchQuotes();
   }, [fetchQuotes]);
 
-  // Filter Catalog items based on search and category tab
   const filteredCatalog = catalog.filter(prod => {
     const matchesSearch = prod.sku.toLowerCase().includes(catalogSearch.toLowerCase()) || 
                           prod.name.toLowerCase().includes(catalogSearch.toLowerCase());
@@ -132,7 +128,6 @@ export default function Quotations({ user }) {
     return matchesSearch && matchesCategory;
   });
 
-  // Add Item to constructor
   const handleAddItem = (sku) => {
     const prod = catalog.find(p => p.sku === sku);
     if (!prod) return;
@@ -151,7 +146,6 @@ export default function Quotations({ user }) {
     setSelectedItems([...selectedItems, newItem]);
   };
 
-  // Modify quantity, price, or details inline
   const updateItemField = (index, field, value) => {
     setSelectedItems(prev => prev.map((item, idx) => {
       if (idx === index) {
@@ -167,7 +161,6 @@ export default function Quotations({ user }) {
     }));
   };
 
-  // Incrementor helpers for quantity
   const handleBumpQty = (index, direction) => {
     const step = 50;
     setSelectedItems(prev => prev.map((item, idx) => {
@@ -179,7 +172,6 @@ export default function Quotations({ user }) {
     }));
   };
 
-  // Simulated blueprint drawing uploader trigger
   const handleMockBlueprintUpload = (index, fileName) => {
     setBlueprintUploadProgress(prev => ({ ...prev, [index]: 10 }));
     
@@ -188,7 +180,6 @@ export default function Quotations({ user }) {
         const current = prev[index] || 0;
         if (current >= 100) {
           clearInterval(interval);
-          // Set uploaded file name to items spec
           setSelectedItems(prevItems => prevItems.map((itm, i) => {
             if (i === index) {
               return { 
@@ -208,23 +199,20 @@ export default function Quotations({ user }) {
     }, 150);
   };
 
-  // Calculate pricing summary (Rupees ₹)
   const computeQuoteTotals = (items, disc) => {
     const sub = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-    const tax = Math.round((sub - disc) * 0.18); // 18% standard GST
+    const tax = Math.round((sub - disc) * 0.18); 
     const total = Math.max(0, sub - disc + tax);
     return { subtotal: sub, tax, totalPrice: total };
   };
 
   const totals = computeQuoteTotals(selectedItems, discountVal);
 
-  // Submit quote to state (or save revision)
   const handleSaveQuotation = async (e) => {
     e.preventDefault();
     if (selectedItems.length === 0) return;
 
     if (revisingQuoteId) {
-      // Save Revision
       try {
         const revisedData = {
           items: selectedItems,
@@ -253,11 +241,10 @@ export default function Quotations({ user }) {
       return;
     }
 
-    // Save New Quote
     try {
       const newQuoteData = {
         customer: selectedCustomer,
-        bda: user.name,
+        bda: user?.name || "System Agent", // Safe navigation operator guard
         items: selectedItems,
         subtotal: totals.subtotal,
         discount: discountVal,
@@ -269,7 +256,8 @@ export default function Quotations({ user }) {
         validityDays: 30
       };
       const created = await createQuotation(newQuoteData);
-      setQuotes([created, ...quotes]);
+      setQuotes(prev => [created, ...prev]); // Fixed stale array references with state updater function
+      setActiveQuotation(created); // UX Polish: Open the newly made quote instantly
     } catch (err) {
       console.error("Failed to register B2B quotation", err);
     }
@@ -280,7 +268,6 @@ export default function Quotations({ user }) {
     setBlueprintUploadProgress({});
   };
 
-  // Promote Quote status through stage clicks
   const promoteQuoteStatus = async (quoteId, nextStatus) => {
     try {
       const updated = await updateQuotation(quoteId, { status: nextStatus });
@@ -293,7 +280,6 @@ export default function Quotations({ user }) {
     }
   };
 
-  // Trigger Quote Revision and pre-fill form constructor with previous values
   const handleStartRevision = (quote) => {
     setRevisingQuoteId(quote._id);
     setSelectedCustomer(quote.customer);
@@ -307,15 +293,11 @@ export default function Quotations({ user }) {
     setIsCreating(true);
   };
 
-  // Categories list
   const categories = ["All", "Titanium", "Aluminium", "Inconel", "Steel"];
-
-  // Quote Stages for Interactive Chevron progression
   const quoteStages = ["Draft", "Sent_To_Client", "Under_Negotiation", "Client_Accepted", "Lost"];
 
   return (
     <div className="quotations-view fade-in">
-      {/* Creation Toggle Bar */}
       <div className="quotes-controls glass-panel">
         <div className="section-title">
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -331,17 +313,11 @@ export default function Quotations({ user }) {
         <button 
           className="btn btn-primary"
           onClick={() => {
-            if (isCreating) {
-              setIsCreating(false);
-              setRevisingQuoteId(null);
-              setSelectedItems([]);
-              setDiscountVal(0);
-            } else {
-              setIsCreating(true);
-              setRevisingQuoteId(null);
-              setSelectedItems([]);
-              setDiscountVal(0);
-            }
+            setIsCreating(!isCreating);
+            setRevisingQuoteId(null);
+            setSelectedItems([]);
+            setDiscountVal(0);
+            setBlueprintUploadProgress({});
           }}
         >
           {isCreating ? "View Quotations Registry" : "Create Technical Quotation"}
@@ -349,10 +325,7 @@ export default function Quotations({ user }) {
       </div>
 
       {isCreating ? (
-        /* Redesigned Premium Quote Builder Split-Pane Panel */
         <div className="quote-builder-grid">
-          
-          {/* Split Pane Left: Form Details */}
           <form onSubmit={handleSaveQuotation} className="builder-form-card glass-panel fade-in">
             <h4 className="card-heading">
               {revisingQuoteId && activeQuotation
@@ -439,12 +412,9 @@ export default function Quotations({ user }) {
               </div>
             </div>
 
-            {/* Catalog Item picker with searches and category tags */}
             <div className="items-selector-block">
               <div className="catalog-block-header">
                 <h5>Select SKU from Product Catalog</h5>
-                
-                {/* Search SKU */}
                 <div className="catalog-mini-search">
                   <Search size={12} className="search-icon-mini" />
                   <input 
@@ -456,7 +426,6 @@ export default function Quotations({ user }) {
                 </div>
               </div>
 
-              {/* Categories Tabs Selector */}
               <div className="catalog-tabs-wrap">
                 {categories.map(cat => (
                   <button
@@ -491,7 +460,6 @@ export default function Quotations({ user }) {
               </div>
             </div>
 
-            {/* Configured lines list with quantity bump adjusters & CAD loaders */}
             <div className="configured-items-section">
               <h5>Configure Quotation Line Items</h5>
               {selectedItems.length === 0 ? (
@@ -564,7 +532,6 @@ export default function Quotations({ user }) {
                           </div>
                         </div>
 
-                        {/* Interactive Blueprint Mock Uploader */}
                         {item.isCustom && (
                           <div className="custom-specs-input-block fade-in">
                             <div className="specs-inputs-subgrid">
@@ -584,7 +551,6 @@ export default function Quotations({ user }) {
 
                               <div className="specs-uploader-sub">
                                 <label>Engineering CAD Overlays (.DWG)</label>
-                                
                                 {item.customDetails.drawingFile ? (
                                   <div className="blueprint-uploaded-file-tag fade-in">
                                     <FileCheck size={12} className="uploaded-icon" />
@@ -640,7 +606,6 @@ export default function Quotations({ user }) {
             </button>
           </form>
 
-          {/* Split Pane Right: Financial Summary */}
           <div className="pricing-card glass-panel fade-in">
             <h4 className="card-heading">Financial Summary</h4>
             <div className="pricing-rows-wrap">
@@ -648,35 +613,27 @@ export default function Quotations({ user }) {
                 <span>Items Subtotal</span>
                 <strong>₹{totals.subtotal.toLocaleString("en-IN")}.00</strong>
               </div>
-
               <div className="pricing-row row-discount">
                 <span>Negotiated Discount</span>
                 <span>-₹{discountVal.toLocaleString("en-IN")}.00</span>
               </div>
-
               <div className="pricing-row">
                 <span>GST (18% Sales Tax)</span>
                 <strong>₹{totals.tax.toLocaleString("en-IN")}.00</strong>
               </div>
-
               <div className="pricing-divider" />
-
               <div className="pricing-row row-total">
                 <span>Grand Total (INR)</span>
                 <span className="text-gradient">₹{totals.totalPrice.toLocaleString("en-IN")}.00</span>
               </div>
             </div>
-
             <div className="audit-alert badge badge-info">
               <AlertCircle size={14} /> 18% standard GST will be auto-calculated over subtotal minus discount.
             </div>
           </div>
-
         </div>
       ) : (
-        /* Registry list of existing Quotes */
         <div className="quotes-registry-layout fade-in">
-          
           <div className="registry-table-card glass-panel">
             <table className="registry-table">
               <thead>
@@ -701,15 +658,15 @@ export default function Quotations({ user }) {
                     <td><span className="badge badge-muted">v{q.revisionNumber}</span></td>
                     <td>{q.customer}</td>
                     <td>{q.paymentTerms}</td>
-                    <td>{q.shippingTerms.split(" ")[0]}</td>
-                    <td><strong>₹{q.totalPrice.toLocaleString("en-IN")}</strong></td>
+                    <td>{q.shippingTerms?.split(" ")[0] || "EXW"}</td>
+                    <td><strong>₹{q.totalPrice?.toLocaleString("en-IN")}</strong></td>
                     <td>
                       <span className={`badge ${
                         q.status === "Client_Accepted" ? "badge-success" : 
                         q.status === "Revised" ? "badge-info" : 
                         q.status === "Expired" ? "badge-error" : 
                         "badge-warning"
-                      }`}>{q.status.replace(/_/g, ' ')}</span>
+                      }`}>{q.status?.replace(/_/g, ' ') || "Draft"}</span>
                     </td>
                   </tr>
                 ))}
@@ -717,7 +674,6 @@ export default function Quotations({ user }) {
             </table>
           </div>
 
-          {/* Side detailing Revision Panel */}
           {activeQuotation ? (
             <div className="quote-detail-panel glass-panel fade-in">
               <div className="panel-header">
@@ -727,7 +683,6 @@ export default function Quotations({ user }) {
                 </div>
                 
                 <div className="panel-actions-wrap">
-                  {/* Generate B2B PDF Quotation simulator */}
                   <button 
                     className="btn btn-primary btn-small generate-pdf-btn"
                     onClick={() => setShowInvoicePrintPreview(true)}
@@ -735,7 +690,6 @@ export default function Quotations({ user }) {
                   >
                     <FileText size={11} /> Generate PDF
                   </button>
-
                   <button 
                     className="btn btn-secondary btn-small revision-trigger-btn"
                     onClick={() => handleStartRevision(activeQuotation)}
@@ -745,7 +699,6 @@ export default function Quotations({ user }) {
                 </div>
               </div>
 
-              {/* Interactive Chevron quote status progression */}
               <div className="quote-detail-section">
                 <h5>Quotation Status Progression Path</h5>
                 <div className="quote-stage-chevron-tracker">
@@ -778,11 +731,10 @@ export default function Quotations({ user }) {
                 </div>
               </div>
 
-              {/* Items in Active Quote */}
               <div className="panel-section">
                 <h5>Quoted Line Items</h5>
                 <div className="panel-items-list">
-                  {activeQuotation.items.map((item, idx) => (
+                  {activeQuotation.items?.map((item, idx) => (
                     <div key={idx} className="panel-item-row">
                       <div className="panel-item-desc">
                         <strong>{item.sku}</strong>
@@ -805,11 +757,10 @@ export default function Quotations({ user }) {
                 </div>
               </div>
 
-              {/* Revision History timeline */}
               <div className="panel-section">
                 <h5>Revision History Timeline</h5>
                 <div className="revision-timeline">
-                  {activeQuotation.history.map((hist, idx) => (
+                  {activeQuotation.history?.map((hist, idx) => (
                     <div key={idx} className="rev-timeline-item">
                       <div className="rev-badge">
                         <History size={12} />
@@ -826,7 +777,6 @@ export default function Quotations({ user }) {
                   ))}
                 </div>
               </div>
-
             </div>
           ) : (
             <div className="quote-detail-panel-empty glass-panel fade-in">
@@ -835,11 +785,9 @@ export default function Quotations({ user }) {
               <p>Click any row in the registry to inspect quoted items, pricing breakdowns, and historical engineering revisions.</p>
             </div>
           )}
-
         </div>
       )}
 
-      {/* DYNAMIC SPECTACULAR INVOICE / PRINT PREVIEW MODAL */}
       {showInvoicePrintPreview && activeQuotation && (
         <div className="invoice-preview-modal-backdrop" onClick={() => setShowInvoicePrintPreview(false)}>
           <div className="invoice-preview-modal glass-panel fade-in" onClick={(e) => e.stopPropagation()}>
@@ -863,8 +811,6 @@ export default function Quotations({ user }) {
 
             <div className="invoice-print-viewport">
               <div className="print-invoice-sheet">
-                
-                {/* Header details */}
                 <div className="sheet-top-row">
                   <div className="sheet-logo-area">
                     <Factory className="logo-icon-sheet" size={36} />
@@ -878,7 +824,7 @@ export default function Quotations({ user }) {
                     <p>Quote Ref: <strong>{activeQuotation.quotationNumber}</strong></p>
                     <p>Revision: <strong>v{activeQuotation.revisionNumber}</strong></p>
                     <p>Date Generated: <strong>{new Date().toISOString().split("T")[0]}</strong></p>
-                    <p>Valid Until: <strong>{activeQuotation.expiryDate}</strong></p>
+                    <p>Valid Until: <strong>{activeQuotation.expiryDate || "N/A"}</strong></p>
                   </div>
                 </div>
 
@@ -890,7 +836,6 @@ export default function Quotations({ user }) {
                     <span>Wagholi Industrial Zone, Pune, India</span>
                     <span>Contact: sales.pune@forgecrm.com</span>
                   </div>
-
                   <div className="sheet-party-col">
                     <h3>CLIENT INTAKE</h3>
                     <strong>{activeQuotation.customer}</strong>
@@ -900,7 +845,6 @@ export default function Quotations({ user }) {
                   </div>
                 </div>
 
-                {/* Shipping Terms */}
                 <div className="sheet-clauses-strip">
                   <div className="clause-item">
                     <strong>Payment Schedule:</strong>
@@ -912,7 +856,6 @@ export default function Quotations({ user }) {
                   </div>
                 </div>
 
-                {/* Items Table */}
                 <div className="sheet-table-wrap">
                   <table className="sheet-items-table">
                     <thead>
@@ -925,7 +868,7 @@ export default function Quotations({ user }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {activeQuotation.items.map((item, idx) => (
+                      {activeQuotation.items?.map((item, idx) => (
                         <tr key={idx}>
                           <td><strong>{item.sku}</strong></td>
                           <td>
@@ -938,38 +881,36 @@ export default function Quotations({ user }) {
                             )}
                           </td>
                           <td>{item.quantity}</td>
-                          <td>₹{item.unitPrice.toLocaleString("en-IN")}.00</td>
-                          <td><strong>₹{(item.quantity * item.unitPrice).toLocaleString("en-IN")}.00</strong></td>
+                          <td>₹{item.unitPrice?.toLocaleString("en-IN")}.00</td>
+                          <td><strong>₹{(item.quantity * item.unitPrice)?.toLocaleString("en-IN")}.00</strong></td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
 
-                {/* Financial Summary */}
                 <div className="sheet-pricing-summary-block">
                   <div className="summary-math-col">
                     <div className="math-row">
                       <span>Items Subtotal:</span>
-                      <span>₹{activeQuotation.subtotal.toLocaleString("en-IN")}.00</span>
+                      <span>₹{activeQuotation.subtotal?.toLocaleString("en-IN")}.00</span>
                     </div>
                     <div className="math-row row-disc-sub">
                       <span>Commercial Bulk Discount:</span>
-                      <span>-₹{activeQuotation.discount.toLocaleString("en-IN")}.00</span>
+                      <span>-₹{activeQuotation.discount?.toLocaleString("en-IN")}.00</span>
                     </div>
                     <div className="math-row">
                       <span>GST sales tax (18% Standard):</span>
-                      <span>₹{activeQuotation.tax.toLocaleString("en-IN")}.00</span>
+                      <span>₹{activeQuotation.tax?.toLocaleString("en-IN")}.00</span>
                     </div>
                     <div className="pricing-divider" />
                     <div className="math-row row-grand-total">
                       <span>Grand Total Potential (INR):</span>
-                      <span>₹{activeQuotation.totalPrice.toLocaleString("en-IN")}.00</span>
+                      <span>₹{activeQuotation.totalPrice?.toLocaleString("en-IN")}.00</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Bank terms signature area */}
                 <div className="sheet-bottom-signatures">
                   <div className="bank-details-box">
                     <h4>Bank Transfer Details</h4>
@@ -983,13 +924,11 @@ export default function Quotations({ user }) {
                     <strong>ForgeCRM Operations Division</strong>
                   </div>
                 </div>
-
               </div>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }

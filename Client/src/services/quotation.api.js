@@ -40,8 +40,19 @@ export const getQuotations = async () => {
 export const createQuotation = async (quotationData) => {
   try {
     const response = await api.post("/quotations", quotationData);
+    const created = response.data.data;
+
+    // Synchronize local cache immediately
+    const cachedData = localStorage.getItem("crm_quotes_data");
+    if (cachedData) {
+      try {
+        const localQuotes = JSON.parse(cachedData);
+        localStorage.setItem("crm_quotes_data", JSON.stringify([created, ...localQuotes]));
+      } catch (e) {}
+    }
+
     isQuotationOffline = false;
-    return response.data.data;
+    return created;
   } catch (error) {
     console.warn("Quotations Server Offline. Persisting quote locally in offline cache.", error.message);
     isQuotationOffline = true;
@@ -91,8 +102,20 @@ export const createQuotation = async (quotationData) => {
 export const updateQuotation = async (id, quotationData) => {
   try {
     const response = await api.put(`/quotations/${id}`, quotationData);
+    const updated = response.data.data;
+
+    // Synchronize local cache immediately
+    const cachedData = localStorage.getItem("crm_quotes_data");
+    if (cachedData) {
+      try {
+        const localQuotes = JSON.parse(cachedData);
+        const updatedList = localQuotes.map(q => q._id === id ? updated : q);
+        localStorage.setItem("crm_quotes_data", JSON.stringify(updatedList));
+      } catch (e) {}
+    }
+
     isQuotationOffline = false;
-    return response.data.data;
+    return updated;
   } catch (error) {
     console.warn("Quotations Server Offline. Saving revision locally.", error.message);
     isQuotationOffline = true;
@@ -163,6 +186,17 @@ export const updateQuotation = async (id, quotationData) => {
 export const deleteQuotation = async (id) => {
   try {
     const response = await api.delete(`/quotations/${id}`);
+
+    // Synchronize local cache immediately
+    const cachedData = localStorage.getItem("crm_quotes_data");
+    if (cachedData) {
+      try {
+        const localQuotes = JSON.parse(cachedData);
+        const filtered = localQuotes.filter(q => q._id !== id);
+        localStorage.setItem("crm_quotes_data", JSON.stringify(filtered));
+      } catch (e) {}
+    }
+
     isQuotationOffline = false;
     return response.data.data;
   } catch (error) {

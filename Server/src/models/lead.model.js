@@ -148,7 +148,9 @@ leadSchema.pre("save", function (next) {
       this.contacts[0].isPrimary = true;
     }
   }
-  next();
+  if (typeof next === "function") {
+    next();
+  }
 });
 
 export const Lead = mongoose.model("Lead", leadSchema);

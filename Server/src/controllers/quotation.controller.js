@@ -41,6 +41,7 @@ export const getQuotations = asyncHandler(async (req, res) => {
     .populate("leadId", "companyName industry contacts")
     .populate("bdaId", "name email role")
     .populate("items.productId", "sku name basePrice unitOfMeasure specifications")
+    .populate("history.revisedBy", "name")
     .sort({ createdAt: -1 });
 
   // Map backend ObjectId references back to the flat structure expected by the client UI
@@ -74,8 +75,8 @@ export const getQuotations = asyncHandler(async (req, res) => {
       status: q.status,
       validityDays: q.validityDays,
       expiryDate: q.expiryDate?.toISOString().split("T")[0],
-      history: q.history.map(hist => ({
-        revision: hist.revision,
+      history: q.history.map((hist, idx) => ({
+        revision: idx,
         revisedBy: hist.revisedBy?.name || "N/A",
         revisedAt: hist.revisedAt?.toISOString().split("T")[0],
         reason: hist.reason
@@ -362,8 +363,8 @@ export const updateQuotation = asyncHandler(async (req, res) => {
     status: result.status,
     validityDays: result.validityDays,
     expiryDate: result.expiryDate?.toISOString().split("T")[0],
-    history: result.history.map(hist => ({
-      revision: hist.revision,
+    history: result.history.map((hist, idx) => ({
+      revision: idx,
       revisedBy: hist.revisedBy?.name || "N/A",
       revisedAt: hist.revisedAt?.toISOString().split("T")[0],
       reason: hist.reason

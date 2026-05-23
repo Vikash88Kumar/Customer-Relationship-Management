@@ -9,6 +9,8 @@ import {
   Target, 
   AlertCircle 
 } from "lucide-react";
+import { getLeads, isLeadOffline } from "../services/lead.api.js";
+import { getQuotations, isQuotationOffline } from "../services/quotation.api.js";
 import "./Dashboard.css";
 
 export default function Dashboard({ user }) {
@@ -18,16 +20,42 @@ export default function Dashboard({ user }) {
   const [quotes, setQuotes] = React.useState([]);
 
   React.useEffect(() => {
-    // Load leads
+    // 1. Initial load from local cache for super-fast render
     const localLeads = localStorage.getItem("crm_leads_data");
     if (localLeads) {
       try { setLeads(JSON.parse(localLeads)); } catch (e) {}
     }
-    // Load quotes
     const localQuotes = localStorage.getItem("crm_quotes_data");
     if (localQuotes) {
       try { setQuotes(JSON.parse(localQuotes)); } catch (e) {}
     }
+
+    // 2. Fetch live data from the server APIs asynchronously
+    let active = true;
+    const fetchLiveData = async () => {
+      try {
+        const liveLeads = await getLeads();
+        if (active && liveLeads && liveLeads.length > 0) {
+          setLeads(liveLeads);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch live leads for dashboard:", err);
+      }
+      try {
+        const liveQuotes = await getQuotations();
+        if (active && liveQuotes && liveQuotes.length > 0) {
+          setQuotes(liveQuotes);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch live quotations for dashboard:", err);
+      }
+    };
+
+    fetchLiveData();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Performance of a single BDA monthly data selector
@@ -36,6 +64,12 @@ export default function Dashboard({ user }) {
   });
 
   const bdaMonthlyData = React.useMemo(() => {
+    // Calculate live May revenue for this specific BDA from active quotations
+    const empQuotes = quotes.filter(q => q.bda === selectedBdaName);
+    const liveMayRevenue = empQuotes
+      .filter(q => q.status === "Client_Accepted")
+      .reduce((sum, q) => sum + (q.totalPrice || 0), 0);
+
     const dataMap = {
       "Pooja Patel": {
         role: "Senior BDA",
@@ -86,9 +120,45 @@ export default function Dashboard({ user }) {
         closedDeals: 8
       }
     };
-
-    return dataMap[selectedBdaName] || dataMap["Vikash Kumar"];
-  }, [selectedBdaName]);
+ 
+    const bdaData = { ...(dataMap[selectedBdaName] || dataMap["Vikash Kumar"]) };
+    
+    if (liveMayRevenue > 0) {
+      const mayLakhs = liveMayRevenue / 100000;
+      bdaData.conversions = [...bdaData.conversions];
+      bdaData.conversions[4] = mayLakhs;
+      
+      // Target met calculation relative to a 3 Lakhs target
+      bdaData.targetMetPct = Math.round((mayLakhs / 3) * 100);
+      
+      const liveClosedCount = empQuotes.filter(q => q.status === "Client_Accepted").length;
+      if (liveClosedCount > 0) {
+        bdaData.closedDeals = liveClosedCount;
+      }
+ 
+      // Re-map circles & SVG coordinate y-axis dynamically based on Lakhs
+      // SVG height for chart is 220, axis base 170 is 0L, 20 is 5.0L.
+      // So y = 170 - (val * 30).
+      bdaData.circles = bdaData.circles.map((circle, idx) => {
+        if (idx === 4) {
+          const newCy = Math.max(20, Math.min(170, 170 - (mayLakhs * 30)));
+          return {
+            ...circle,
+            cy: newCy,
+            val: `₹${mayLakhs.toFixed(1)}L`
+          };
+        }
+        return circle;
+      });
+ 
+      // Update points and areaGlow strings
+      const pointCoords = bdaData.circles.map(c => `${c.cx},${c.cy}`);
+      bdaData.points = `M ${pointCoords.join(" L ")}`;
+      bdaData.areaGlow = `M 65,170 L ${pointCoords.join(" L ")} L 455,170 Z`;
+    }
+ 
+    return bdaData;
+  }, [selectedBdaName, quotes]);
 
   // Compute stats dynamically
   const closedQuotes = quotes.filter(q => q.status === "Client_Accepted");
@@ -185,12 +255,17 @@ export default function Dashboard({ user }) {
     // Process quote history
     quotes.forEach(q => {
       if (q.history) {
-        q.history.forEach(hist => {
+        q.history.forEach((hist, idx) => {
+          let revNum = hist.revision;
+          if (revNum === undefined || revNum === null || revNum === "undefined" || revNum === "") {
+            revNum = idx;
+          }
+          const quoteId = q._id || q.quotationNumber || `local_${idx}`;
           list.push({
-            id: `act_quote_${q._id}_${hist.revision}`,
+            id: `act_quote_${quoteId}_${revNum}`,
             user: hist.revisedBy || "System",
-            action: `registered quote version v${hist.revision} (${hist.reason})`,
-            target: q.customer,
+            action: `registered quote version v${revNum} (${hist.reason || 'Initial draft submission'})`,
+            target: q.customer || "Unknown Client",
             time: hist.revisedAt || "Recently",
             timestamp: new Date(hist.revisedAt || Date.now()).getTime()
           });
@@ -270,6 +345,46 @@ export default function Dashboard({ user }) {
 
   const dynamicTasks = getDynamicTasks();
 
+  // Dynamic Lead Intake Sources calculation
+  const sourceStats = React.useMemo(() => {
+    const counts = {
+      "Direct RFQ": 0,
+      "Website Inbound": 0,
+      "Trade Shows": 0,
+      "Cold Outreach": 0
+    };
+    
+    leads.forEach(l => {
+      const src = l.source;
+      if (src === "Direct RFQ") counts["Direct RFQ"]++;
+      else if (src === "Website Inbound") counts["Website Inbound"]++;
+      else if (src?.includes("Trade Show") || src === "Trade Shows" || src === "Trade Show Partner") counts["Trade Shows"]++;
+      else counts["Cold Outreach"]++;
+    });
+
+    const total = leads.length;
+    if (total === 0) {
+      return { rfqPct: 35, webPct: 25, tradePct: 20, outreachPct: 20 };
+    }
+
+    return {
+      rfqPct: Math.round((counts["Direct RFQ"] / total) * 100),
+      webPct: Math.round((counts["Website Inbound"] / total) * 100),
+      tradePct: Math.round((counts["Trade Shows"] / total) * 100),
+      outreachPct: Math.round((counts["Cold Outreach"] / total) * 100)
+    };
+  }, [leads]);
+
+  const rfqDash = (sourceStats.rfqPct / 100) * 439.8;
+  const webDash = (sourceStats.webPct / 100) * 439.8;
+  const tradeDash = (sourceStats.tradePct / 100) * 439.8;
+  const outreachDash = (sourceStats.outreachPct / 100) * 439.8;
+
+  const rfqOffset = 0;
+  const webOffset = -rfqDash;
+  const tradeOffset = -(rfqDash + webDash);
+  const outreachOffset = -(rfqDash + webDash + tradeDash);
+
   return (
     <div className="dashboard-view fade-in">
       {/* Top Banner */}
@@ -282,7 +397,20 @@ export default function Dashboard({ user }) {
               : "Your pipelines are up to date. You have 3 pending follow-up tasks due today."}
           </p>
         </div>
-        <div className="banner-role-tag badge banner-role-tag">{user.role.replace("_", " ")}</div>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <div className="banner-role-tag badge banner-role-tag">{user.role.replace("_", " ")}</div>
+          {(isLeadOffline || isQuotationOffline) ? (
+            <div className="offline-badge badge fade-in" style={{ background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.2)", display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: "600" }}>
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#ef4444", display: "inline-block", boxShadow: "0 0 8px #ef4444" }}></span>
+              Offline Cache
+            </div>
+          ) : (
+            <div className="online-badge badge fade-in" style={{ background: "rgba(16, 185, 129, 0.1)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.2)", display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: "600" }}>
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981", display: "inline-block", boxShadow: "0 0 8px #10b981" }}></span>
+              Live Sync
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Grid Stats */}
@@ -421,27 +549,27 @@ export default function Dashboard({ user }) {
             <svg viewBox="0 0 200 200" className="donut-svg">
               <circle cx="100" cy="100" r="70" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="20" />
               
-              {/* Direct RFQ (35%) */}
+              {/* Direct RFQ */}
               <circle cx="100" cy="100" r="70" fill="none" stroke="var(--accent)" strokeWidth="20" 
-                      strokeDasharray="153.9 439.8" strokeDashoffset="0" />
+                      strokeDasharray={`${rfqDash} 439.8`} strokeDashoffset={rfqOffset} />
               
-              {/* Website Inbound (25%) */}
+              {/* Website Inbound */}
               <circle cx="100" cy="100" r="70" fill="none" stroke="var(--color-success)" strokeWidth="20" 
-                      strokeDasharray="109.9 439.8" strokeDashoffset="-153.9" />
+                      strokeDasharray={`${webDash} 439.8`} strokeDashoffset={webOffset} />
               
-              {/* Trade Shows (20%) */}
+              {/* Trade Shows */}
               <circle cx="100" cy="100" r="70" fill="none" stroke="var(--color-info)" strokeWidth="20" 
-                      strokeDasharray="88 439.8" strokeDashoffset="-263.8" />
+                      strokeDasharray={`${tradeDash} 439.8`} strokeDashoffset={tradeOffset} />
               
-              {/* Cold Outreach (20%) */}
+              {/* Cold Outreach */}
               <circle cx="100" cy="100" r="70" fill="none" stroke="var(--color-warning)" strokeWidth="20" 
-                      strokeDasharray="88 439.8" strokeDashoffset="-351.8" />
+                      strokeDasharray={`${outreachDash} 439.8`} strokeDashoffset={outreachOffset} />
             </svg>
             <div className="donut-legends">
-              <div className="legend-item"><span className="legend-dot dot-accent"></span><span>Direct RFQ (35%)</span></div>
-              <div className="legend-item"><span className="legend-dot dot-success"></span><span>Website (25%)</span></div>
-              <div className="legend-item"><span className="legend-dot dot-info"></span><span>Trade Shows (20%)</span></div>
-              <div className="legend-item"><span className="legend-dot dot-warning"></span><span>Outreach (20%)</span></div>
+              <div className="legend-item"><span className="legend-dot dot-accent"></span><span>Direct RFQ ({sourceStats.rfqPct}%)</span></div>
+              <div className="legend-item"><span className="legend-dot dot-success"></span><span>Website ({sourceStats.webPct}%)</span></div>
+              <div className="legend-item"><span className="legend-dot dot-info"></span><span>Trade Shows ({sourceStats.tradePct}%)</span></div>
+              <div className="legend-item"><span className="legend-dot dot-warning"></span><span>Outreach ({sourceStats.outreachPct}%)</span></div>
             </div>
           </div>
         </div>

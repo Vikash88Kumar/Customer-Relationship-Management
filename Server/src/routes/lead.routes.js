@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyJwt } from "../middlewares/auth.middleware.js";
+import { verifyJwt, authorizeRoles } from "../middlewares/auth.middleware.js";
 import {
   getLeads,
   createLead,
@@ -14,7 +14,7 @@ import {
 
 const router = Router();
 
-// All routes here require user authentication
+// Apply JWT verification globally to all Lead endpoints
 router.use(verifyJwt);
 
 router.route("/")
@@ -23,7 +23,7 @@ router.route("/")
 
 router.route("/:id")
   .put(updateLead)
-  .delete(deleteLead);
+  .delete(authorizeRoles("Admin", "BDA_Manager"), deleteLead);
 
 router.route("/:id/tasks")
   .post(addTask);

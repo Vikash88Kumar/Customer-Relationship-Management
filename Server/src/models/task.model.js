@@ -75,7 +75,9 @@ taskSchema.pre("save", function (next) {
   if (this.isModified("status") && this.status === "Completed") {
     this.completedAt = new Date();
   }
-  next();
+  if (typeof next === "function") {
+    next();
+  }
 });
 
 export const Task = mongoose.model("Task", taskSchema);

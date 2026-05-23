@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyJwt } from "../middlewares/auth.middleware.js";
+import { verifyJwt, authorizeRoles } from "../middlewares/auth.middleware.js";
 import {
   getQuotations,
   createQuotation,
@@ -18,6 +18,6 @@ router.route("/")
 
 router.route("/:id")
   .put(updateQuotation)
-  .delete(deleteQuotation);
+  .delete(authorizeRoles("Admin", "BDA_Manager"), deleteQuotation);
 
 export default router;

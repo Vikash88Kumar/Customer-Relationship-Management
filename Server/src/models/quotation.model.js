@@ -161,7 +161,9 @@ quotationSchema.pre("validate", function (next) {
     this.subtotal = subtotalSum;
     this.totalPrice = Math.max(0, this.subtotal - this.discount + this.tax);
   }
-  next();
+  if (typeof next === "function") {
+    next();
+  }
 });
 
 export const Quotation = mongoose.model("Quotation", quotationSchema);

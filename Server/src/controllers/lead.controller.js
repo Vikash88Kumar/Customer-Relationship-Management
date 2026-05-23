@@ -142,8 +142,9 @@ export const createLead = asyncHandler(async (req, res) => {
 
   // Return full lead structure
   const tasks = await Task.find({ leadId: newLead._id });
+  const populatedLead = await Lead.findById(newLead._id).populate("assignedBDA", "name email avatar role");
   const formattedLead = {
-    ...newLead.toObject(),
+    ...(populatedLead ? populatedLead.toObject() : newLead.toObject()),
     tasks: tasks.map(t => ({ id: t._id, label: t.title, completed: false })),
     logs: []
   };
@@ -170,7 +171,7 @@ export const updateLead = asyncHandler(async (req, res) => {
   const oldStatus = lead.status;
 
   // Update lead
-  const updatedLead = await Lead.findByIdAndUpdate(id, { $set: updateData }, { new: true });
+  const updatedLead = await Lead.findByIdAndUpdate(id, { $set: updateData }, { new: true }).populate("assignedBDA", "name email avatar role");
 
   if (statusChanged && req.user) {
     await writeAuditLog(
