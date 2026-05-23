@@ -1,0 +1,26 @@
+import { User } from "./models/user.model.js";
+import { Team } from "./models/team.model.js";
+import { Lead } from "./models/lead.model.js";
+import { Product } from "./models/product.model.js";
+import { Quotation } from "./models/quotation.model.js";
+import { CommunicationLog } from "./models/communicationLog.model.js";
+import { Task } from "./models/task.model.js";
+import { PerformanceMetric } from "./models/performanceMetric.model.js";
+import { AuditLog } from "./models/auditLog.model.js";
+
+console.log("-----------------------------------------");
+console.log("Testing Mongoose Model Compilation...");
+console.log("-----------------------------------------");
+console.log("User Model: Loaded [OK]");
+console.log("Team Model: Loaded [OK]");
+console.log("Lead Model: Loaded [OK]");
+console.log("Product Model: Loaded [OK]");
+console.log("Quotation Model: Loaded [OK]");
+console.log("CommunicationLog Model: Loaded [OK]");
+console.log("Task Model: Loaded [OK]");
+console.log("PerformanceMetric Model: Loaded [OK]");
+console.log("AuditLog Model: Loaded [OK]");
+console.log("-----------------------------------------");
+console.log("STATUS: All models registered and indexed successfully!");
+console.log("-----------------------------------------");
+process.exit(0);

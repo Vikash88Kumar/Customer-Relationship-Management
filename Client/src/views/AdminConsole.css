@@ -1,0 +1,212 @@
+.admin-console-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  width: 100%;
+  overflow-y: auto;
+}
+
+/* Split Pane Grid */
+.admin-split-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .admin-split-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.audit-logs-card,
+.bda-management-card {
+  padding: 20px;
+}
+
+.panel-header-inline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+}
+
+.shield-icon {
+  color: var(--accent-light);
+}
+
+/* Compliance Audit Table */
+.audit-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 12px;
+}
+
+.audit-table th {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.audit-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.audit-row-hover {
+  transition: background-color 0.2s ease;
+}
+
+.audit-row-hover:hover {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.operator-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.operator-cell small {
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.target-cell-indicator {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.ip-indicator,
+.time-indicator {
+  font-family: ui-monospace, monospace;
+  color: var(--text-muted);
+}
+
+/* BDA Management Account List */
+.bda-mgmt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bda-mgmt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.bda-mgmt-row:hover {
+  border-color: rgba(99, 102, 241, 0.15);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.bda-mgmt-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 180px;
+}
+
+.bda-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.active-green {
+  background: var(--color-success);
+  box-shadow: 0 0 6px var(--color-success);
+}
+
+.inactive-red {
+  background: var(--color-error);
+  box-shadow: 0 0 6px var(--color-error);
+}
+
+.bda-mgmt-details {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.bda-mgmt-details strong {
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.bda-mgmt-details span {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  margin-top: 1px;
+}
+
+.bda-mgmt-quota {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.bda-mgmt-quota span {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.bda-mgmt-quota strong {
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.bda-toggle-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+  padding: 2px;
+}
+
+.bda-toggle-btn:hover {
+  color: var(--accent-light);
+}
+
+.toggle-icon {
+  flex-shrink: 0;
+}
+
+.active-icon {
+  color: var(--accent);
+}
+
+.inactive-icon {
+  color: var(--text-muted);
+  opacity: 0.3;
+}
