@@ -1,119 +1,35 @@
 import React from "react";
 import { Search, SlidersHorizontal, Settings2, Shield, Ruler, Clock, Tag, Plus, X, FileCheck } from "lucide-react";
+import { getProducts, createProduct, isOffline } from "../services/product.api.js";
 import "./Catalog.css";
 
 export default function Catalog() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("All");
 
-  // Load products from localStorage or fall back to robust defaults
-  const [products, setProducts] = React.useState(() => {
-    const localProds = localStorage.getItem("crm_catalog_data");
-    if (localProds) {
-      try {
-        return JSON.parse(localProds);
-      } catch (e) {
-        console.error("Error parsing local products data", e);
-      }
-    }
-    return [
-      {
-        _id: "prod_1",
-        sku: "TI-FAST-01",
-        name: "Grade 5 Titanium M12 Fasteners",
-        description: "High-tensile strength fasteners optimized for extreme aerospace environments and engine assemblies.",
-        category: "Fasteners & Hardware",
-        unitOfMeasure: "pcs",
-        basePrice: 1250,
-        specifications: {
-          dimensions: "M12 x 50mm",
-          material: "Ti-6Al-4V Grade 5",
-          tolerance: "+/- 0.01mm",
-          weightKg: 0.045
-        },
-        leadTimeDays: 7,
-        isCustomizable: true,
-        isActive: true
-      },
-      {
-        _id: "prod_2",
-        sku: "AL-PLATE-06",
-        name: "Aluminium 6061-T6 Precision Sheets",
-        description: "Structural alloy sheet stock with exceptional corrosion resistance and mechanical properties.",
-        category: "Raw Materials",
-        unitOfMeasure: "sheets",
-        basePrice: 4800,
-        specifications: {
-          dimensions: "1200mm x 2400mm x 6mm",
-          material: "Aluminium 6061-T6",
-          tolerance: "+/- 0.05mm",
-          weightKg: 46.8
-        },
-        leadTimeDays: 5,
-        isCustomizable: false,
-        isActive: true
-      },
-      {
-        _id: "prod_3",
-        sku: "IN-PIN-718",
-        name: "Inconel 718 Custom Turbine Pins",
-        description: "Superalloy custom fabricated fasteners designed to withstand severe heat and pressure environments.",
-        category: "Custom Manufactured Parts",
-        unitOfMeasure: "pcs",
-        basePrice: 8500,
-        specifications: {
-          dimensions: "22mm Diameter x 110mm",
-          material: "Inconel 718 Superalloy",
-          tolerance: "+/- 0.002mm",
-          weightKg: 0.35
-        },
-        leadTimeDays: 18,
-        isCustomizable: true,
-        isActive: true
-      },
-      {
-        _id: "prod_4",
-        sku: "FE-BOLT-4140",
-        name: "AISI 4140 Anchor Bolts M36",
-        description: "High durability carbon alloy structural bolts for structural foundation anchors.",
-        category: "Fasteners & Hardware",
-        unitOfMeasure: "pcs",
-        basePrice: 2200,
-        specifications: {
-          dimensions: "M36 x 350mm",
-          material: "AISI 4140 Steel",
-          tolerance: "+/- 0.10mm",
-          weightKg: 3.12
-        },
-        leadTimeDays: 6,
-        isCustomizable: false,
-        isActive: true
-      },
-      {
-        _id: "prod_5",
-        sku: "DIE-CARB-99",
-        name: "Tungsten Carbide Tooling Dies",
-        description: "Heavy-duty forming dies made of pure tungsten carbide for metal punching presses.",
-        category: "Tooling & Dies",
-        unitOfMeasure: "pcs",
-        basePrice: 38000,
-        specifications: {
-          dimensions: "180mm x 180mm x 40mm",
-          material: "Tungsten Carbide",
-          tolerance: "+/- 0.005mm",
-          weightKg: 12.4
-        },
-        leadTimeDays: 25,
-        isCustomizable: true,
-        isActive: true
-      }
-    ];
-  });
+  const [products, setProducts] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [isOfflineMode, setIsOfflineMode] = React.useState(false);
 
-  // Sync products to local storage
+  const fetchProducts = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getProducts(categoryFilter, searchQuery);
+
+      setProducts(data);
+      // console.log(data);
+      setIsOfflineMode(isOffline);
+    } catch (e) {
+      console.error("Failed to load catalog products", e);
+      setIsOfflineMode(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [categoryFilter, searchQuery]);
+
   React.useEffect(() => {
-    localStorage.setItem("crm_catalog_data", JSON.stringify(products));
-  }, [products]);
+    fetchProducts();
+  }, [fetchProducts]);
 
   // Modal forms states
   const [showAddModal, setShowAddModal] = React.useState(false);
@@ -152,20 +68,12 @@ export default function Catalog() {
   };
 
   // Submit product creation to list
-  const handleCreateProduct = (e) => {
+  const handleCreateProduct = async (e) => {
     e.preventDefault();
     if (!sku.trim() || !name.trim() || !basePrice || !material.trim()) return;
 
-    const uppercaseSku = sku.toUpperCase().trim();
-    const isDuplicate = products.some(p => p.sku.toUpperCase() === uppercaseSku);
-    if (isDuplicate) {
-      setErrorMsg(`SKU code "${uppercaseSku}" already exists in the catalog.`);
-      return;
-    }
-
-    const newProd = {
-      _id: `prod_${Date.now()}`,
-      sku: uppercaseSku,
+    const productPayload = {
+      sku: sku.toUpperCase().trim(),
       name: name.trim(),
       description: description.trim() || "No product description provided.",
       category,
@@ -178,22 +86,21 @@ export default function Catalog() {
         weightKg: 0.1
       },
       leadTimeDays: parseInt(leadTimeDays) || 7,
-      isCustomizable,
-      isActive: true
+      isCustomizable
     };
 
-    setProducts([newProd, ...products]);
-    handleCloseModal();
+    try {
+      const created = await createProduct(productPayload);
+      setProducts(prev => [created, ...prev]);
+      setIsOfflineMode(isOffline);
+      handleCloseModal();
+    } catch (error) {
+      setErrorMsg(error.message || "Failed to register product SKU on server.");
+      setIsOfflineMode(isOffline);
+    }
   };
 
-  // Filtering products
-  const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          p.specifications.material.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === "All" || p.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  const displayProducts = products;
 
   return (
     <div className="catalog-view fade-in">
@@ -228,6 +135,12 @@ export default function Catalog() {
             </select>
           </div>
 
+          {isOfflineMode && (
+            <span className="badge" style={{ fontSize: "10px", padding: "6px 10px", background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", color: "var(--accent-light)", borderRadius: "4px", fontWeight: "600" }}>
+              ⚠️ Offline Mode
+            </span>
+          )}
+
           <button 
             className="btn btn-primary"
             onClick={() => setShowAddModal(true)}
@@ -239,13 +152,18 @@ export default function Catalog() {
       </div>
 
       {/* Grid of Industrial products */}
-      <div className="catalog-grid">
-        {filteredProducts.map((prod) => (
-          <div key={prod._id} className="product-card glass-panel card-lift">
-            <div className="card-top-row">
-              <span className="sku-tag">{prod.sku}</span>
-              <span className="category-badge badge badge-muted">{prod.category}</span>
-            </div>
+      {loading ? (
+        <div style={{ display: "flex", justifyContent: "center", padding: "80px", width: "100%", color: "var(--text-secondary)" }}>
+          Loading products catalog...
+        </div>
+      ) : (
+        <div className="catalog-grid">
+          {Array.isArray(displayProducts) && displayProducts.map((prod) => (
+            <div key={prod._id} className="product-card glass-panel card-lift">
+              <div className="card-top-row">
+                <span className="sku-tag">{prod.sku}</span>
+                <span className="category-badge badge badge-muted">{prod.category}</span>
+              </div>
 
             <div className="card-middle-content">
               <h4>{prod.name}</h4>
@@ -289,14 +207,15 @@ export default function Catalog() {
               )}
             </div>
 
-          </div>
-        ))}
-        {filteredProducts.length === 0 && (
-          <div className="catalog-empty-search-notice" style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px", color: "var(--text-secondary)" }}>
-            No products matching search parameters.
-          </div>
-        )}
-      </div>
+            </div>
+          ))}
+          {displayProducts?.length === 0 && (
+            <div className="catalog-empty-search-notice" style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px", color: "var(--text-secondary)" }}>
+              No products matching search parameters.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* DYNAMIC DEREGISTRATION ADD NEW PRODUCT MODAL */}
       {showAddModal && (

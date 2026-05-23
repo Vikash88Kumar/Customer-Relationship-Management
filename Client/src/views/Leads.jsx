@@ -168,12 +168,13 @@ export default function Leads({ user }) {
   React.useEffect(() => {
     const fetchLeads = async () => {
       try {
+        const token = localStorage.getItem("crm_access_token");
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
         const response = await fetch(`${API_BASE_URL}/leads`, {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer simulated_token_val`
-          }
+          headers,
+          credentials: "include"
         });
         if (response.ok) {
           const res = await response.json();
@@ -310,13 +311,14 @@ export default function Leads({ user }) {
 
     // API Sync
     try {
+      const token = localStorage.getItem("crm_access_token");
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       const response = await fetch(`${API_BASE_URL}/leads`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer simulated_token"
-        },
-        body: JSON.stringify(newLead)
+        headers,
+        body: JSON.stringify(newLead),
+        credentials: "include"
       });
       if (response.ok) {
         const res = await response.json();
@@ -369,13 +371,14 @@ export default function Leads({ user }) {
 
     // API Sync
     try {
+      const token = localStorage.getItem("crm_access_token");
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       await fetch(`${API_BASE_URL}/leads/${leadId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer simulated_token"
-        },
-        body: JSON.stringify({ status: nextStatus })
+        headers,
+        body: JSON.stringify({ status: nextStatus }),
+        credentials: "include"
       });
     } catch (err) {
       console.log("Updated status offline-saved locally.");
@@ -408,11 +411,13 @@ export default function Leads({ user }) {
     }
 
     try {
+      const token = localStorage.getItem("crm_access_token");
+      const headers = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       await fetch(`${API_BASE_URL}/leads/${leadId}`, {
         method: "DELETE",
-        headers: {
-          "Authorization": "Bearer simulated_token"
-        }
+        headers,
+        credentials: "include"
       });
     } catch (err) {
       console.log("Deleted lead locally.");
@@ -439,11 +444,13 @@ export default function Leads({ user }) {
     });
 
     try {
+      const token = localStorage.getItem("crm_access_token");
+      const headers = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       await fetch(`${API_BASE_URL}/leads/${leadId}/tasks/${taskId}`, {
         method: "PUT",
-        headers: {
-          "Authorization": "Bearer simulated_token"
-        }
+        headers,
+        credentials: "include"
       });
     } catch (err) {
       console.log("Toggled task locally.");
@@ -476,13 +483,14 @@ export default function Leads({ user }) {
     setNewChecklistLabel("");
 
     try {
+      const token = localStorage.getItem("crm_access_token");
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       const response = await fetch(`${API_BASE_URL}/leads/${selectedLead._id}/tasks`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer simulated_token"
-        },
-        body: JSON.stringify({ label: valToSubmit })
+        headers,
+        body: JSON.stringify({ label: valToSubmit }),
+        credentials: "include"
       });
       if (response.ok) {
         const res = await response.json();
@@ -528,11 +536,13 @@ export default function Leads({ user }) {
     });
 
     try {
+      const token = localStorage.getItem("crm_access_token");
+      const headers = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       await fetch(`${API_BASE_URL}/leads/${selectedLead._id}/tasks/${taskId}`, {
         method: "DELETE",
-        headers: {
-          "Authorization": "Bearer simulated_token"
-        }
+        headers,
+        credentials: "include"
       });
     } catch (err) {
       console.log("Deleted task locally.");
@@ -648,13 +658,14 @@ export default function Leads({ user }) {
     setNewLogSummary("");
 
     try {
+      const token = localStorage.getItem("crm_access_token");
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       const response = await fetch(`${API_BASE_URL}/leads/${selectedLead._id}/logs`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer simulated_token"
-        },
-        body: JSON.stringify({ type: submitType, subject: submitSubject, summary: submitSummary })
+        headers,
+        body: JSON.stringify({ type: submitType, subject: submitSubject, summary: submitSummary }),
+        credentials: "include"
       });
       if (response.ok) {
         const res = await response.json();
@@ -700,11 +711,13 @@ export default function Leads({ user }) {
     });
 
     try {
+      const token = localStorage.getItem("crm_access_token");
+      const headers = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       await fetch(`${API_BASE_URL}/leads/${selectedLead._id}/logs/${logId}`, {
         method: "DELETE",
-        headers: {
-          "Authorization": "Bearer simulated_token"
-        }
+        headers,
+        credentials: "include"
       });
     } catch (err) {
       console.log("Deleted log locally.");

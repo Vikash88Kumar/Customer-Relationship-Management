@@ -3,6 +3,7 @@ import {
   Factory, 
   LogIn
 } from "lucide-react";
+import { LoginUser } from "../services/user.api.js";
 import "./Auth.css";
 
 export default function Auth({ onLoginSuccess }) {
@@ -11,22 +12,20 @@ export default function Auth({ onLoginSuccess }) {
   const [role, setRole] = React.useState("BDA"); // BDA or BDA_Manager
   const [error, setError] = React.useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       setError("Please fill in all required fields.");
       return;
     }
     
-    // Simulate API request authentication success
-    onLoginSuccess({
-      name: role === "BDA_Manager" ? "Neha Sharma" : "Vikash Kumar",
-      email: email.toLowerCase(),
-      role: role,
-      avatar: role === "BDA_Manager"
-        ? "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80"
-        : "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80"
-    });
+    setError("");
+    try {
+      const userData = await LoginUser({ email, password, role });
+      onLoginSuccess(userData);
+    } catch (err) {
+      setError(err.message || "Invalid credentials. Please verify your workspace parameters.");
+    }
   };
 
   return (

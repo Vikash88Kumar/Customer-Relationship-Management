@@ -1,4 +1,3 @@
-import React from "react";
 import { 
   Plus, 
   Search, 
@@ -20,6 +19,9 @@ import {
   Percent,
   Factory
 } from "lucide-react";
+import { getProducts } from "../services/product.api.js";
+import { getQuotations, createQuotation, updateQuotation, isQuotationOffline } from "../services/quotation.api.js";
+import api from "../api/axios.js";
 import "./Quotations.css";
 
 export default function Quotations({ user }) {
@@ -28,78 +30,18 @@ export default function Quotations({ user }) {
   const [catalogSearch, setCatalogSearch] = React.useState("");
   const [catalogCategory, setCatalogCategory] = React.useState("All");
 
-  // Standard Product Catalog (SKUs) in Rupees (₹)
-  const catalog = [
+  // Standard Product Catalog (SKUs) fallback
+  const [catalog, setCatalog] = React.useState([
     { sku: "TI-FAST-01", name: "Grade 5 Titanium M12 Fasteners", basePrice: 1250, unitOfMeasure: "pcs", category: "Titanium" },
     { sku: "AL-PLATE-06", name: "Aluminium 6061-T6 Precision Sheets", basePrice: 4800, unitOfMeasure: "sheets", category: "Aluminium" },
     { sku: "IN-PIN-718", name: "Inconel 718 Custom Turbine Pins", basePrice: 8500, unitOfMeasure: "pcs", category: "Inconel" },
     { sku: "FE-BOLT-4140", name: "AISI 4140 Anchor Bolts M36", basePrice: 2200, unitOfMeasure: "pcs", category: "Steel" }
-  ];
+  ]);
 
-  // Load quotes from local storage or fall back to defaults
-  const [quotes, setQuotes] = React.useState(() => {
-    const localQuotes = localStorage.getItem("crm_quotes_data");
-    if (localQuotes) {
-      try {
-        return JSON.parse(localQuotes);
-      } catch (e) {
-        console.error("Error parsing local quotes", e);
-      }
-    }
-    return [
-      {
-        _id: "quote_1",
-        quotationNumber: "QT-2026-081",
-        revisionNumber: 1,
-        customer: "Tata Motors Defence Division",
-        bda: "Vikash Kumar",
-        items: [
-          { sku: "TI-FAST-01", name: "Grade 5 Titanium M12 Fasteners", quantity: 500, unitPrice: 1250, isCustom: true, customDetails: { tolerance: "+/- 0.005mm", material: "Ti-6Al-4V", drawingFile: "TATA-DEF-M12-V1.dwg" } },
-          { sku: "AL-PLATE-06", name: "Aluminium 6061-T6 Precision Sheets", quantity: 50, unitPrice: 4500, isCustom: false }
-        ],
-        subtotal: 850000,
-        discount: 25000,
-        tax: 148500, // 18% standard GST
-        totalPrice: 973500,
-        paymentTerms: "50% Advance / 50% on Delivery",
-        shippingTerms: "FOB Mumbai Port",
-        status: "Client_Accepted",
-        validityDays: 30,
-        expiryDate: "2026-06-19",
-        history: [
-          { revision: 0, revisedBy: "Vikash Kumar", revisedAt: "2026-05-18", reason: "Initial draft submitted" },
-          { revision: 1, revisedBy: "Vikash Kumar", revisedAt: "2026-05-20", reason: "Revised titanium quantity and applied bulk discount" }
-        ]
-      },
-      {
-        _id: "quote_2",
-        quotationNumber: "QT-2026-082",
-        revisionNumber: 0,
-        customer: "Hindustan Aeronautics (HAL)",
-        bda: "Vikash Kumar",
-        items: [
-          { sku: "IN-PIN-718", name: "Inconel 718 Custom Turbine Pins", quantity: 200, unitPrice: 8500, isCustom: true, customDetails: { tolerance: "+/- 0.002mm", drawingFile: "HAL-TURB-09.dwg" } }
-        ],
-        subtotal: 1700000,
-        discount: 50000,
-        tax: 297000,
-        totalPrice: 1947000,
-        paymentTerms: "Net 30",
-        shippingTerms: "EXW Bengaluru Factory",
-        status: "Sent_To_Client",
-        validityDays: 15,
-        expiryDate: "2026-06-03",
-        history: [
-          { revision: 0, revisedBy: "Vikash Kumar", revisedAt: "2026-05-19", reason: "Initial engineering drawing verified and pricing computed" }
-        ]
-      }
-    ];
-  });
-
-  // Sync quotes to local storage
-  React.useEffect(() => {
-    localStorage.setItem("crm_quotes_data", JSON.stringify(quotes));
-  }, [quotes]);
+  const [quotes, setQuotes] = React.useState([]);
+  const [leads, setLeads] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [isOfflineMode, setIsOfflineMode] = React.useState(false);
 
   // Pricing Builder State
   const [selectedCustomer, setSelectedCustomer] = React.useState("Tata Motors Defence Division");
@@ -114,6 +56,73 @@ export default function Quotations({ user }) {
   // PDF Print preview modal toggler
   const [showInvoicePrintPreview, setShowInvoicePrintPreview] = React.useState(false);
   const [revisingQuoteId, setRevisingQuoteId] = React.useState(null);
+
+  // Load B2B Leads dynamically
+  React.useEffect(() => {
+    const fetchLeads = async () => {
+      try {
+        const response = await api.get("/leads");
+        if (response.data?.data) {
+          setLeads(response.data.data);
+          if (response.data.data.length > 0) {
+            setSelectedCustomer(response.data.data[0].companyName);
+          }
+        }
+      } catch (err) {
+        console.warn("Offline: Fetching leads from crm_leads_data cache.");
+        const cached = localStorage.getItem("crm_leads_data");
+        if (cached) {
+          try {
+            const parsedLeads = JSON.parse(cached);
+            setLeads(parsedLeads);
+            if (parsedLeads.length > 0) {
+              setSelectedCustomer(parsedLeads[0].companyName);
+            }
+          } catch (e) {}
+        }
+      }
+    };
+    fetchLeads();
+  }, []);
+
+  // Fetch Catalog items dynamically
+  React.useEffect(() => {
+    const fetchCatalog = async () => {
+      try {
+        const data = await getProducts();
+        if (data && data.length > 0) {
+          setCatalog(data.map(p => ({
+            sku: p.sku,
+            name: p.name,
+            basePrice: p.basePrice,
+            unitOfMeasure: p.unitOfMeasure || "pcs",
+            category: p.category || "General"
+          })));
+        }
+      } catch (err) {
+        console.warn("Failed to load catalog products dynamically", err);
+      }
+    };
+    fetchCatalog();
+  }, []);
+
+  // Fetch Quotations dynamically
+  const fetchQuotes = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getQuotations();
+      setQuotes(data);
+      setIsOfflineMode(isQuotationOffline);
+    } catch (e) {
+      console.error("Failed to load quotations", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchQuotes();
+  }, [fetchQuotes]);
 
   // Filter Catalog items based on search and category tab
   const filteredCatalog = catalog.filter(prod => {
@@ -210,43 +219,31 @@ export default function Quotations({ user }) {
   const totals = computeQuoteTotals(selectedItems, discountVal);
 
   // Submit quote to state (or save revision)
-  const handleSaveQuotation = (e) => {
+  const handleSaveQuotation = async (e) => {
     e.preventDefault();
     if (selectedItems.length === 0) return;
 
     if (revisingQuoteId) {
       // Save Revision
-      setQuotes(prevQuotes => prevQuotes.map(q => {
-        if (q._id === revisingQuoteId) {
-          const nextRev = q.revisionNumber + 1;
-          const updated = {
-            ...q,
-            revisionNumber: nextRev,
-            items: selectedItems,
-            subtotal: totals.subtotal,
-            discount: discountVal,
-            tax: totals.tax,
-            totalPrice: totals.totalPrice,
-            paymentTerms: selectedPayment,
-            shippingTerms: selectedShipping,
-            status: "Revised",
-            history: [
-              ...q.history,
-              { 
-                revision: nextRev, 
-                revisedBy: user.name, 
-                revisedAt: new Date().toISOString().split("T")[0], 
-                reason: "Revised technical specifications, quantity configurations, and commercial discount schedules." 
-              }
-            ]
-          };
-          if (activeQuotation && activeQuotation._id === revisingQuoteId) {
-            setActiveQuotation(updated);
-          }
-          return updated;
+      try {
+        const revisedData = {
+          items: selectedItems,
+          subtotal: totals.subtotal,
+          discount: discountVal,
+          tax: totals.tax,
+          totalPrice: totals.totalPrice,
+          paymentTerms: selectedPayment,
+          shippingTerms: selectedShipping,
+          reason: "Revised technical specifications, quantity configurations, and commercial discount schedules."
+        };
+        const updated = await updateQuotation(revisingQuoteId, revisedData);
+        setQuotes(prevQuotes => prevQuotes.map(q => q._id === revisingQuoteId ? updated : q));
+        if (activeQuotation && activeQuotation._id === revisingQuoteId) {
+          setActiveQuotation(updated);
         }
-        return q;
-      }));
+      } catch (err) {
+        console.error("Failed to revise quotation", err);
+      }
 
       setIsCreating(false);
       setRevisingQuoteId(null);
@@ -257,28 +254,26 @@ export default function Quotations({ user }) {
     }
 
     // Save New Quote
-    const newQuote = {
-      _id: `quote_${Date.now()}`,
-      quotationNumber: `QT-2026-0${Math.floor(Math.random() * 90) + 10}`,
-      revisionNumber: 0,
-      customer: selectedCustomer,
-      bda: user.name,
-      items: selectedItems,
-      subtotal: totals.subtotal,
-      discount: discountVal,
-      tax: totals.tax,
-      totalPrice: totals.totalPrice,
-      paymentTerms: selectedPayment,
-      shippingTerms: selectedShipping,
-      status: "Draft",
-      validityDays: 30,
-      expiryDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split("T")[0],
-      history: [
-        { revision: 0, revisedBy: user.name, revisedAt: new Date().toISOString().split("T")[0], reason: "Initial custom build draft" }
-      ]
-    };
-
-    setQuotes([newQuote, ...quotes]);
+    try {
+      const newQuoteData = {
+        customer: selectedCustomer,
+        bda: user.name,
+        items: selectedItems,
+        subtotal: totals.subtotal,
+        discount: discountVal,
+        tax: totals.tax,
+        totalPrice: totals.totalPrice,
+        paymentTerms: selectedPayment,
+        shippingTerms: selectedShipping,
+        status: "Draft",
+        validityDays: 30
+      };
+      const created = await createQuotation(newQuoteData);
+      setQuotes([created, ...quotes]);
+    } catch (err) {
+      console.error("Failed to register B2B quotation", err);
+    }
+    
     setIsCreating(false);
     setSelectedItems([]);
     setDiscountVal(0);
@@ -286,29 +281,16 @@ export default function Quotations({ user }) {
   };
 
   // Promote Quote status through stage clicks
-  const promoteQuoteStatus = (quoteId, nextStatus) => {
-    setQuotes(prevQuotes => prevQuotes.map(q => {
-      if (q._id === quoteId) {
-        const updated = {
-          ...q,
-          status: nextStatus,
-          history: [
-            ...q.history,
-            { 
-              revision: q.revisionNumber, 
-              revisedBy: user.name, 
-              revisedAt: new Date().toISOString().split("T")[0], 
-              reason: `Promoted quotation status to ${nextStatus.replace(/_/g, ' ')}` 
-            }
-          ]
-        };
-        if (activeQuotation && activeQuotation._id === quoteId) {
-          setActiveQuotation(updated);
-        }
-        return updated;
+  const promoteQuoteStatus = async (quoteId, nextStatus) => {
+    try {
+      const updated = await updateQuotation(quoteId, { status: nextStatus });
+      setQuotes(prevQuotes => prevQuotes.map(q => q._id === quoteId ? updated : q));
+      if (activeQuotation && activeQuotation._id === quoteId) {
+        setActiveQuotation(updated);
       }
-      return q;
-    }));
+    } catch (err) {
+      console.error("Failed to promote quotation status", err);
+    }
   };
 
   // Trigger Quote Revision and pre-fill form constructor with previous values
@@ -336,7 +318,14 @@ export default function Quotations({ user }) {
       {/* Creation Toggle Bar */}
       <div className="quotes-controls glass-panel">
         <div className="section-title">
-          <h3>Precision B2B Commercial Quotes</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <h3>Precision B2B Commercial Quotes</h3>
+            {isOfflineMode && (
+              <span className="badge" style={{ fontSize: "10px", padding: "4px 8px", background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", color: "var(--accent-light)", borderRadius: "4px", fontWeight: "600" }}>
+                ⚠️ Offline Mode
+              </span>
+            )}
+          </div>
           <p>Configure custom-engineered quotes, revision tracking, and legal Incoterms.</p>
         </div>
         <button 
@@ -379,9 +368,17 @@ export default function Quotations({ user }) {
                   onChange={(e) => setSelectedCustomer(e.target.value)}
                   className="builder-select"
                 >
-                  <option value="Tata Motors Defence Division">Tata Motors Defence Division</option>
-                  <option value="Hindustan Aeronautics (HAL)">Hindustan Aeronautics (HAL)</option>
-                  <option value="L&T Heavy Engineering">L&T Heavy Engineering</option>
+                  {leads.length > 0 ? (
+                    leads.map(l => (
+                      <option key={l._id} value={l.companyName}>{l.companyName}</option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Tata Motors Defence Division">Tata Motors Defence Division</option>
+                      <option value="Hindustan Aeronautics (HAL)">Hindustan Aeronautics (HAL)</option>
+                      <option value="L&T Heavy Engineering">L&T Heavy Engineering</option>
+                    </>
+                  )}
                 </select>
               </div>
 

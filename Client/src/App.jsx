@@ -7,9 +7,20 @@ import Leads from "./views/Leads";
 import Quotations from "./views/Quotations";
 import Catalog from "./views/Catalog";
 import Performance from "./views/Performance";
+import { LogoutUser } from "./services/user.api.js";
 
 export default function App() {
-  const [user, setUser] = React.useState(null);
+  const [user, setUser] = React.useState(() => {
+    const cached = localStorage.getItem("crm_user_profile");
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
   const [activeTab, setActiveTab] = React.useState("dashboard");
   const [theme, setTheme] = React.useState("dark");
 
@@ -27,7 +38,10 @@ export default function App() {
     setActiveTab("dashboard");
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await LogoutUser();
+    } catch (e) {}
     setUser(null);
   };
 
