@@ -6,10 +6,12 @@ import { User } from "../models/user.model.js";
 /**
  * Configure cookie options for secure token delivery
  */
+const isProdOrCrossSite = process.env.NODE_ENV === "production" || (process.env.CORS_ORIGIN && process.env.CORS_ORIGIN.includes("vercel.app"));
+
 const cookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "Lax",
+  secure: isProdOrCrossSite,
+  sameSite: isProdOrCrossSite ? "none" : "lax",
   path: "/"
 };
 

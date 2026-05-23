@@ -2,18 +2,10 @@ import api from "../api/axios.js";
 
 export const registerUser = async (data) => {
   try {
-    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-    const response = await fetch(`${API_BASE_URL}/users/register`, {
-      method: "POST",
-      body: data
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || "Registration failed");
-    }
-    return await response.json();
+    const response = await api.post("/users/register", data);
+    return response.data;
   } catch (error) {
-    console.error("Registration error:", error.message);
+    console.error("Registration error:", error.response?.data?.message || error.message);
     throw error;
   }
 };
@@ -73,20 +65,14 @@ export const LogoutUser = async () => {
 
 export const getCurrentUser = async () => {
   try {
-    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-    const response = await fetch(`${API_BASE_URL}/auth/current-user`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("crm_access_token")}`
-      }
-    });
-    if (!response.ok) {
-      throw new Error("Failed to load user profile");
+    const response = await api.get("/auth/current-user");
+    const user = response.data.data;
+    if (user) {
+      localStorage.setItem("crm_user_profile", JSON.stringify(user));
     }
-    const result = await response.json();
-    return result.data;
+    return user;
   } catch (error) {
-    console.warn("Could not fetch current user from server, reading offline profile.");
+    console.warn("Could not fetch current user from server, reading offline profile.", error.message);
     const profile = localStorage.getItem("crm_user_profile");
     return profile ? JSON.parse(profile) : null;
   }

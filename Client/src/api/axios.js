@@ -1,8 +1,20 @@
 import axios from "axios"
 
-const api=axios.create({
-    baseURL:import.meta.env.BACKEND_URI,
-    withCredentials:true
-})
+// Vite requires VITE_ prefix to expose environment variables to client-side bundles.
+// Self-heal the base URL by auto-appending "/api/v1" if not already present.
+let resolvedBase = 
+  import.meta.env.VITE_BACKEND_URI || 
+  import.meta.env.VITE_API_URL || 
+  import.meta.env.BACKEND_URI || 
+  "http://localhost:5000/api/v1";
+
+if (resolvedBase && !resolvedBase.endsWith("/api/v1") && !resolvedBase.endsWith("/api/v1/")) {
+  resolvedBase = resolvedBase.endsWith("/") ? `${resolvedBase}api/v1` : `${resolvedBase}/api/v1`;
+}
+
+const api = axios.create({
+    baseURL: resolvedBase,
+    withCredentials: true
+});
 
 export default api;
