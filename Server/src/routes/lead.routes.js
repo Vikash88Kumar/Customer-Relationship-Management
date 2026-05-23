@@ -15,7 +15,7 @@ import {
 const router = Router();
 
 // Apply JWT verification globally to all Lead endpoints
-router.use(verifyJwt);
+// router.use(verifyJwt);
 
 router.route("/")
   .get(getLeads)

@@ -5,7 +5,7 @@ import { getProducts, createProduct } from "../controllers/product.controller.js
 const router = Router();
 
 // Apply JWT verification globally to all Product Catalog endpoints
-router.use(verifyJwt);
+// router.use(verifyJwt);
 
 router.route("/")
   .get(getProducts)

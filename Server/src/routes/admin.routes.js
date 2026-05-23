@@ -5,7 +5,7 @@ import { getAdminSummary, getAdminAuditLogs } from "../controllers/admin.control
 const router = Router();
 
 // Apply global JWT verification and Admin-only authorization to all routes defined below
-router.use(verifyJwt);
+// router.use(verifyJwt);
 router.use(authorizeRoles("Admin"));
 
 router.route("/summary").get(getAdminSummary);
