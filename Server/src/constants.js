@@ -1,0 +1,1 @@
+export const DATABASE_NAME="CRM_DB"
