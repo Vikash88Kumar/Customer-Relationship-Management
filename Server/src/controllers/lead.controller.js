@@ -4,22 +4,15 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import { Lead } from "../models/lead.model.js";
 import { Task } from "../models/task.model.js";
 import { CommunicationLog } from "../models/communicationLog.model.js";
-import { AuditLog } from "../models/auditLog.model.js";
 
 /**
- * Helper: Write a quick compliance audit log
+ * Helper: Write a quick compliance audit log (console output only)
  */
 const writeAuditLog = async (userId, actionType, details, ipAddress = "127.0.0.1") => {
   try {
-    await AuditLog.create({
-      userId,
-      actionType,
-      details,
-      ipAddress,
-      timestamp: new Date()
-    });
+    console.log(`[AUDIT LOG] User: ${userId} | Action: ${actionType} | Details: ${details} | IP: ${ipAddress}`);
   } catch (err) {
-    console.error("Audit log creation failed:", err);
+    console.error("Audit logging helper failed:", err);
   }
 };
 
