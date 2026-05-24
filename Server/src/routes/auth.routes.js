@@ -8,7 +8,7 @@ const router = Router();
 router.route("/login").post(loginUser);
 
 // JWT Protected Routes
-router.route("/logout").post(verifyJwt, logoutUser);
+router.route("/logout").post(logoutUser);
 router.route("/current-user").get(verifyJwt, getCurrentUser);
 
 export default router;

@@ -13,8 +13,22 @@ if (resolvedBase && !resolvedBase.endsWith("/api/v1") && !resolvedBase.endsWith(
 }
 
 const api = axios.create({
-    baseURL: "https://customer-relationship-management-wb51.onrender.com/api/v1",
+    baseURL: resolvedBase,
     withCredentials: true
 });
+
+// Request interceptor to automatically attach Bearer token from localStorage
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("crm_access_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export default api;

@@ -2,6 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { User } from "../models/user.model.js";
+import jwt from "jsonwebtoken";
 
 /**
  * Configure cookie options for secure token delivery
@@ -70,13 +71,20 @@ export const loginUser = asyncHandler(async (req, res) => {
  * Handle B2B User logout
  */
 export const logoutUser = asyncHandler(async (req, res) => {
-  // If user is authenticated, clear their refresh token from DB
-  if (req.user?._id) {
-    await User.findByIdAndUpdate(
-      req.user._id,
-      { $set: { refreshToken: undefined } },
-      { new: true }
-    );
+  try {
+    const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
+    if (token) {
+      const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET || "ACCESS_SECRET");
+      if (decodedToken?._id) {
+        await User.findByIdAndUpdate(
+          decodedToken._id,
+          { $unset: { refreshToken: 1 } },
+          { new: true }
+        );
+      }
+    }
+  } catch (error) {
+    console.warn("Could not clear refresh token from database during logout:", error.message);
   }
 
   return res
