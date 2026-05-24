@@ -13,7 +13,7 @@ if (resolvedBase && !resolvedBase.endsWith("/api/v1") && !resolvedBase.endsWith(
 }
 
 const api = axios.create({
-    baseURL: "https://customer-relationship-management-wb51.onrender.com",
+    baseURL: "https://customer-relationship-management-wb51.onrender.com/api/v1",
     withCredentials: true
 });
 
