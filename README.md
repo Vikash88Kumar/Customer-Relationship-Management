@@ -1,4 +1,4 @@
-# 🚀 Enterprise Customer Relationship Management (CRM) Platform
+#  Enterprise Customer Relationship Management (CRM) Platform
 
 A full-stack, enterprise-grade CRM solution built with **React (Vite)** on the frontend and **Node.js (Express)** + **MongoDB (Mongoose)** on the backend. 
 
@@ -6,14 +6,14 @@ This platform streamlines sales operations with client tracking, automated profe
 
 ---
 
-## 🔗 ER Diagram
+##  ER Diagram
 To view the database architecture, field constraints, and relationships visually, see the interactive **[Eraser.io ER Diagram](https://app.eraser.io/workspace/Axjm9AQARkwbkZgI7yj3)**.
 
 ---
 
-## 🌟 Core Features
+##  Core Features
 
-- 🔐 **Authentication & RBAC:** Secure JWT sessions with role boundaries for Admins, BDA Managers, and BDAs.
+-  **Authentication & RBAC:** Secure JWT sessions with role boundaries for Admins, BDA Managers, and BDAs.
 - 📈 **Pipeline & Lead Tracking:** Interactive pipeline states (Inquiry, Demo, Proposal, etc.), checkable follow-up tasks, and detailed communication logs.
 - 🛍️ **Product Catalog:** Manage catalog items and services with secure image storage.
 - 📄 **Quotation Engine:** Automatically generate, discount, tax, and print commercial quotations referencing the catalog.
@@ -21,14 +21,14 @@ To view the database architecture, field constraints, and relationships visually
 
 ---
 
-## 💻 Technology Stack
+##  Technology Stack
 
 * **Frontend:** React 19, Vite, Lucide-React, Axios, Vanilla CSS with custom Dark/Light modes.
 * **Backend:** Node.js (Express), MongoDB (Mongoose ODM), JWT, Bcrypt, Multer, and Cloudinary.
 
 ---
 
-## 📂 Project Structure
+##  Project Structure
 
 ```text
 CRM/
@@ -48,7 +48,7 @@ CRM/
 
 ---
 
-## 🛠️ Quick Start Guide
+##  Quick Start Guide
 
 ### 1. Server Setup
 1. Navigate to the `Server` directory:
@@ -96,5 +96,24 @@ CRM/
 
 ---
 
-## 📄 License
+##  Demo Login Credentials
+
+For testing and evaluation, you can log in using the following default seeded credentials:
+
+### 1. Business Development Associate (BDA)
+- **Emails:** 
+  - `pooja@forge.com` (Pooja Patel)
+  - `vikash@forge.com` (Vikash Kumar)
+- **Password:** `password123`
+- **Role:** BDA
+
+### 2. BDA Manager
+- **Email:** `neha@forge.com` (Neha Sharma)
+- **Password:** `password123`
+- **Role:** BDA_Manager
+
+---
+
+##  License
 This project is licensed under the ISC License.
+
